@@ -178,6 +178,8 @@ public class Game implements KeyListener, MouseMotionListener, PlayerListener {
 
     public void draw(Graphics2D g, Dimension panelSize){
         //g.translate(panelSize.width / 2 - width * TILE_SIZE / 2, panelSize.height / 2 - height * TILE_SIZE / 2);
+        double scalingFactor = panelSize.width / ((double) WIDTH * TILE_SIZE);
+        g.scale(scalingFactor, scalingFactor);
         tileMap.draw(g);
         for (Player player: players) player.draw(g);
         for (int i = 0; i < bullets.size(); i++) bullets.get(i).draw(g);
