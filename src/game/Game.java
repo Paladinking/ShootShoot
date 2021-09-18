@@ -36,6 +36,8 @@ public class Game implements KeyListener, MouseMotionListener, PlayerListener {
 
     private final Point mousePos;
 
+
+    boolean hasReceivedData;
     ByteBuffer receivedData, sendData;
 
     private boolean hasShot;
@@ -97,6 +99,7 @@ public class Game implements KeyListener, MouseMotionListener, PlayerListener {
             try {
                 byte[] data = in.readNBytes(receivedData.capacity());
                 receivedData.clear().put(data);
+                hasReceivedData = true;
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -112,6 +115,7 @@ public class Game implements KeyListener, MouseMotionListener, PlayerListener {
         for (int i = 0; i < numberOfPlayers; i++){
             int x = data[2 + 2 * Integer.BYTES * i] * 256 + data[3 + 2 * Integer.BYTES * i];
             int y = data[6 + 2 * Integer.BYTES * i] * 256 + data[7 + 2 * Integer.BYTES * i];
+            System.out.println(x+ ", " + y);
             Player player = new Player(x, y, TILE_SIZE * 2, colors[i], this);
             players.add(player);
         }
@@ -157,12 +161,15 @@ public class Game implements KeyListener, MouseMotionListener, PlayerListener {
     }
 
     private void handleReceivedData() {
+        if (!hasReceivedData) return;
+        hasReceivedData = false;
         receivedData.position(0);
         for (int i = 0; i < players.size(); i++){
             Player player = players.get(i);
 
             double x = receivedData.getDouble();
             double y = receivedData.getDouble();
+            System.out.println(x + ", " + y);
             player.setPosition(x, y);
             boolean hasShot = receivedData.get() != 0;
             double shotX = receivedData.getDouble();
