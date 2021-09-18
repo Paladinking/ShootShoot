@@ -36,9 +36,6 @@ public class Server {
         while (true){
             for (PlayerHandler handler : playerHandlers){
                 for (int i = 0; i < playerHandlers.size(); i++){
-                    if (i == 0 ){
-                        System.out.println(playerHandlers.get(i));
-                    }
                     try {
                         handler.sendData(playerHandlers.get(i).getData());
                     } catch (IOException ioException) {

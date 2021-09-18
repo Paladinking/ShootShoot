@@ -12,7 +12,6 @@ import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.net.Socket;
 import java.nio.ByteBuffer;
 import java.util.*;
 import java.util.List;
@@ -38,7 +37,8 @@ public class Game implements KeyListener, MouseMotionListener, PlayerListener {
 
 
     boolean hasReceivedData;
-    ByteBuffer receivedData, sendData;
+    private byte[] receivedData;
+    private ByteBuffer receivedDataBuffer, sendData;
 
     private boolean hasShot;
 
@@ -97,8 +97,7 @@ public class Game implements KeyListener, MouseMotionListener, PlayerListener {
     private void receiveData() {
         while (true) {
             try {
-                byte[] data = in.readNBytes(receivedData.capacity());
-                receivedData.clear().put(data);
+                receivedData = in.readNBytes(receivedData.length);
                 hasReceivedData = true;
             } catch (IOException e) {
                 e.printStackTrace();
@@ -115,13 +114,13 @@ public class Game implements KeyListener, MouseMotionListener, PlayerListener {
         for (int i = 0; i < numberOfPlayers; i++){
             int x = data[2 + 2 * Integer.BYTES * i] * 256 + data[3 + 2 * Integer.BYTES * i];
             int y = data[6 + 2 * Integer.BYTES * i] * 256 + data[7 + 2 * Integer.BYTES * i];
-            System.out.println(x+ ", " + y);
             Player player = new Player(x, y, TILE_SIZE * 2, colors[i], this);
             players.add(player);
         }
         playerNumber = data[data.length -1];
 
-        receivedData = ByteBuffer.allocate(PlayerHandler.DATA_SIZE * numberOfPlayers);
+        receivedDataBuffer = ByteBuffer.allocate(PlayerHandler.DATA_SIZE * numberOfPlayers);
+        receivedData = new byte[PlayerHandler.DATA_SIZE * numberOfPlayers];
         sendData = ByteBuffer.allocate(PlayerHandler.DATA_SIZE);
     }
 
@@ -163,19 +162,20 @@ public class Game implements KeyListener, MouseMotionListener, PlayerListener {
     private void handleReceivedData() {
         if (!hasReceivedData) return;
         hasReceivedData = false;
-        receivedData.position(0);
+        receivedDataBuffer.clear();
+        receivedDataBuffer.put(receivedData);
         for (int i = 0; i < players.size(); i++){
             Player player = players.get(i);
 
-            double x = receivedData.getDouble();
-            double y = receivedData.getDouble();
+            double x = receivedDataBuffer.getDouble();
+            double y = receivedDataBuffer.getDouble();
             System.out.println(x + ", " + y);
             player.setPosition(x, y);
-            boolean hasShot = receivedData.get() != 0;
-            double shotX = receivedData.getDouble();
-            double shotY = receivedData.getDouble();
-            double shotDx = receivedData.getDouble();
-            double shotDy = receivedData.getDouble();
+            boolean hasShot = receivedDataBuffer.get() != 0;
+            double shotX = receivedDataBuffer.getDouble();
+            double shotY = receivedDataBuffer.getDouble();
+            double shotDx = receivedDataBuffer.getDouble();
+            double shotDy = receivedDataBuffer.getDouble();
             if (hasShot){
                 bullets.add(new Bullet(shotX, shotY, shotDx, shotDy));
             }
