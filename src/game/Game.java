@@ -38,7 +38,7 @@ public class Game implements KeyListener, MouseMotionListener, PlayerListener {
 
     boolean hasReceivedData;
     private byte[] receivedData;
-    private ByteBuffer receivedDataBuffer, sendData;
+    private ByteBuffer sendData;
 
     private boolean hasShot;
 
@@ -118,8 +118,7 @@ public class Game implements KeyListener, MouseMotionListener, PlayerListener {
             players.add(player);
         }
         playerNumber = data[data.length -1];
-
-        receivedDataBuffer = ByteBuffer.allocate(PlayerHandler.DATA_SIZE * numberOfPlayers);
+        
         receivedData = new byte[PlayerHandler.DATA_SIZE * numberOfPlayers];
         sendData = ByteBuffer.allocate(PlayerHandler.DATA_SIZE);
     }
@@ -162,20 +161,19 @@ public class Game implements KeyListener, MouseMotionListener, PlayerListener {
     private void handleReceivedData() {
         if (!hasReceivedData) return;
         hasReceivedData = false;
-        receivedDataBuffer.clear();
-        receivedDataBuffer.put(receivedData);
+        ByteBuffer buffer = ByteBuffer.wrap(receivedData);
         for (int i = 0; i < players.size(); i++){
             Player player = players.get(i);
 
-            double x = receivedDataBuffer.getDouble();
-            double y = receivedDataBuffer.getDouble();
+            double x = buffer.getDouble();
+            double y = buffer.getDouble();
             System.out.println(x + ", " + y);
             player.setPosition(x, y);
-            boolean hasShot = receivedDataBuffer.get() != 0;
-            double shotX = receivedDataBuffer.getDouble();
-            double shotY = receivedDataBuffer.getDouble();
-            double shotDx = receivedDataBuffer.getDouble();
-            double shotDy = receivedDataBuffer.getDouble();
+            boolean hasShot = buffer.get() != 0;
+            double shotX = buffer.getDouble();
+            double shotY = buffer.getDouble();
+            double shotDx = buffer.getDouble();
+            double shotDy = buffer.getDouble();
             if (hasShot){
                 bullets.add(new Bullet(shotX, shotY, shotDx, shotDy));
             }
