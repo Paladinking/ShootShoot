@@ -17,7 +17,7 @@ import java.util.*;
 import java.util.List;
 import java.util.Timer;
 
-public class Game implements KeyListener, MouseMotionListener, PlayerListener {
+public class Game implements KeyListener, MouseMotionListener, PlayerListener, BulletListener{
 
     public static final int WIDTH = 96, HEIGHT = 54, TILE_SIZE = 20;
 
@@ -132,14 +132,20 @@ public class Game implements KeyListener, MouseMotionListener, PlayerListener {
         shotVel.set(velocity.x, velocity.y);
     }
 
+    @Override
+    public void shotPlayer(Player player) {
+        player.hurt();
+        System.out.println("Player " + playerNumber +" was hurt.");
+    }
+
     public synchronized void tick(){
         hasShot = false;
-        //handleReceivedData();
         Player player = players.get(playerNumber);
         player.tick(tileMap, keyMap, mousePos);
-        for (Bullet bullet : bullets) bullet.tick(tileMap);
         for (int i = 0; i < bullets.size(); i++) {
-            if (bullets.get(i).isDead()){
+            Bullet bullet = bullets.get(i);
+            bullet.tick(tileMap, player);
+            if (bullet.isDead()) {
                 bullets.remove(i);
                 i--;
             }
@@ -171,14 +177,17 @@ public class Game implements KeyListener, MouseMotionListener, PlayerListener {
 
             double x = buffer.getDouble();
             double y = buffer.getDouble();
-            if (i != playerNumber) player.setPosition(x, y);
+            if (i != playerNumber) {
+                player.setPosition(x, y);
+
+            }
             boolean hasShot = buffer.get() != 0;
             double shotX = buffer.getDouble();
             double shotY = buffer.getDouble();
             double shotDx = buffer.getDouble();
             double shotDy = buffer.getDouble();
             if (hasShot){
-                bullets.add(new Bullet(shotX, shotY, shotDx, shotDy));
+                bullets.add(new Bullet(shotX, shotY, shotDx, shotDy, this));
             }
         }
     }
@@ -188,7 +197,7 @@ public class Game implements KeyListener, MouseMotionListener, PlayerListener {
         double scalingFactor = panelSize.width / ((double) WIDTH * TILE_SIZE);
         g.scale(scalingFactor, scalingFactor);
         tileMap.draw(g);
-        for (Player player: players) player.draw(g);
+        for (Player player: players) if (!player.isDead()) player.draw(g);
         for (int i = 0; i < bullets.size(); i++) bullets.get(i).draw(g);
     }
 
@@ -220,6 +229,7 @@ public class Game implements KeyListener, MouseMotionListener, PlayerListener {
     public void mouseMoved(MouseEvent e) {
         mousePos.setLocation(e.getX(), e.getY());
     }
+
 
 
 }

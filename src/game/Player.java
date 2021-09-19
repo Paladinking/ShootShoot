@@ -7,7 +7,7 @@ import java.util.Map;
 
 public class Player {
 
-    private static final int SPEED = 3, SHOOT_DELAY = 100;
+    private static final int SPEED = 3, SHOOT_DELAY = 100, START_HP = 5;
 
     private static final double FRICTION = 0.7;
     private final Vector2d position, velocity;
@@ -16,7 +16,9 @@ public class Player {
 
     private final Color color;
 
-    private int shootDelay;
+    private int hurtTicks;
+
+    private int shootDelay, hp;
 
     private final PlayerListener listener;
 
@@ -27,10 +29,11 @@ public class Player {
         this.color = color;
         this.shootDelay = 0;
         this.listener = listener;
+        this.hp = START_HP;
     }
 
     public void draw(Graphics2D g) {
-        g.setColor(color);
+        g.setColor(hurtTicks > 0 ? Color.orange : color);
         g.fillOval((int) position.x - radius, (int) position.y - radius, radius * 2, radius * 2);
     }
 
@@ -49,7 +52,7 @@ public class Player {
             Vector2d bulletVector = new Vector2d(mousePos.x - position.x, mousePos.y - position.y);
             bulletVector.normalize();
             Vector2d bulletPos = new Vector2d(position);
-            bulletPos.add(new Vector2d(bulletVector.x * radius, bulletVector.y * radius));
+            bulletPos.add(new Vector2d(bulletVector.x * radius, bulletVector.y * (radius + 4)));
             if (tileMap.isOpen(bulletPos)) {
                 shootDelay = SHOOT_DELAY;
                 bulletVector.scale(Bullet.BULLET_SPEED);
@@ -60,6 +63,8 @@ public class Player {
     }
 
     public void tick(TileMap tileMap, Map<Integer, Boolean> keyMap, Point mousePos) {
+        if (isDead()) return;
+        if (hurtTicks >0) hurtTicks--;
         handleInputs(keyMap, mousePos, tileMap);
         if (velocity.lengthSquared() == 0) return;
         Vector2d nextPosition = new Vector2d(position.x + velocity.x, position.y + velocity.y);
@@ -95,5 +100,18 @@ public class Player {
 
     public Vector2d getPosition() {
         return position;
+    }
+
+    public boolean intersects(Vector2d position) {
+        return Point.distanceSq(position.x, position.y, this.position.x, this.position.y) < radius * radius;
+    }
+
+    public void hurt() {
+        hp--;
+        hurtTicks = 10;
+    }
+
+    public boolean isDead(){
+        return hp < 1;
     }
 }

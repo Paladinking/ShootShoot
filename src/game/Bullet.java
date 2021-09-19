@@ -14,16 +14,19 @@ public class Bullet {
     private final Vector2d position, velocity;
     private final List<Point> pointsToDraw;
 
-    public Bullet(Vector2d position, Vector2d velocity) {
+    private final BulletListener listener;
+
+    public Bullet(Vector2d position, Vector2d velocity, BulletListener listener) {
         this.position = position;
         this.velocity = velocity;
         this.remainingBounces = BOUNCES;
         this.pointsToDraw = new ArrayList<>();
         pointsToDraw.add(new Point((int) position.x, (int)position.y));
+        this.listener = listener;
     }
 
-    public Bullet(double shotX, double shotY, double shotDx, double shotDy) {
-        this(new Vector2d(shotX, shotY), new Vector2d(shotDx, shotDy));
+    public Bullet(double shotX, double shotY, double shotDx, double shotDy, BulletListener listener) {
+        this(new Vector2d(shotX, shotY), new Vector2d(shotDx, shotDy), listener);
     }
 
     public void draw(Graphics2D g){
@@ -35,7 +38,7 @@ public class Bullet {
         }
     }
 
-    public void tick(TileMap tileMap) {
+    public void tick(TileMap tileMap, Player player) {
         pointsToDraw.remove(pointsToDraw.size() - 1);
         pointsToDraw.add(new Point((int)position.x, (int)position.y));
         final int tileSize = tileMap.getTileSize();
@@ -44,6 +47,7 @@ public class Bullet {
         final Vector2d step = new Vector2d(position);
         double toMove = velocity.length();
         boolean bounced = false;
+        boolean hitPlayer = false;
         while (toMove > 0) {
             step.x += normalVel.x * tileSize;
             step.y += normalVel.y * tileSize;
@@ -51,9 +55,6 @@ public class Bullet {
             if (!tileMap.isOpen(step)){
                 step.x -= normalVel.x * tileSize;
                 step.y -= normalVel.y * tileSize;
-                if (!tileMap.isOpen(step)){
-                    System.out.println("WTF!!!!");
-                }
                 for (int i = 0; i < tileSize; i++){
                     step.x += normalVel.x;
                     if (!tileMap.isOpen(step)){
@@ -73,9 +74,16 @@ public class Bullet {
                     }
                 }
             }
+            if (player.intersects(step)) {
+                hitPlayer = true;
+            }
         }
         position.set(step);
         if (bounced) remainingBounces--;
+        if (hitPlayer){
+            listener.shotPlayer(player);
+            remainingBounces = -1;
+        }
         pointsToDraw.add(new Point((int) position.x, (int)position.y));
         if (pointsToDraw.size()>10) {
             pointsToDraw.remove(0);
@@ -84,5 +92,9 @@ public class Bullet {
 
     public boolean isDead() {
         return remainingBounces < 0;
+    }
+
+    public Vector2d getPosition() {
+        return position;
     }
 }
