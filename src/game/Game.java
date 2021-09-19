@@ -118,7 +118,7 @@ public class Game implements KeyListener, MouseMotionListener, PlayerListener {
             players.add(player);
         }
         playerNumber = data[data.length -1];
-        
+
         receivedData = new byte[PlayerHandler.DATA_SIZE * numberOfPlayers];
         sendData = ByteBuffer.allocate(PlayerHandler.DATA_SIZE);
     }
@@ -167,8 +167,7 @@ public class Game implements KeyListener, MouseMotionListener, PlayerListener {
 
             double x = buffer.getDouble();
             double y = buffer.getDouble();
-            System.out.println(x + ", " + y);
-            player.setPosition(x, y);
+            if (i != playerNumber) player.setPosition(x, y);
             boolean hasShot = buffer.get() != 0;
             double shotX = buffer.getDouble();
             double shotY = buffer.getDouble();
@@ -182,7 +181,6 @@ public class Game implements KeyListener, MouseMotionListener, PlayerListener {
 
 
     public void draw(Graphics2D g, Dimension panelSize){
-        //g.translate(panelSize.width / 2 - width * TILE_SIZE / 2, panelSize.height / 2 - height * TILE_SIZE / 2);
         double scalingFactor = panelSize.width / ((double) WIDTH * TILE_SIZE);
         g.scale(scalingFactor, scalingFactor);
         tileMap.draw(g);

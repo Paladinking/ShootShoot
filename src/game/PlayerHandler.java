@@ -26,7 +26,6 @@ public class PlayerHandler {
     }
 
     public void start() {
-
         while (true) {
             try {
                 byte[] data;

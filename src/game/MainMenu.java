@@ -4,8 +4,6 @@ import ui.GridConstraints;
 import ui.MyGridLayout;
 
 import javax.swing.*;
-import javax.swing.text.AbstractDocument;
-import javax.swing.text.DocumentFilter;
 import java.awt.*;
 import java.io.IOException;
 import java.net.Socket;
@@ -41,9 +39,8 @@ public class MainMenu {
         mainMenuPanel.add(host, new GridConstraints(1, 14+ 6, 1, 2));
         mainMenuPanel.add(join, new GridConstraints(1, 17+ 6, 1, 2));
         host.addActionListener((e)->{
-            String ip = ipField.getText();
+            String ip = "127.0.0.1";
             int port = Integer.parseInt(portField.getText());
-
             new Thread(()->{
                 try {
                     new Server().open(ipField.getText(),Integer.parseInt(portField.getText()));
@@ -61,7 +58,6 @@ public class MainMenu {
         join.addActionListener((e)-> {
             String ip = ipField.getText();
             int port = Integer.parseInt(portField.getText());
-            Socket socket = null;
             try {
                 startGame(frame, gamePanel, connect(ip, port));
             } catch (IOException ioException) {
