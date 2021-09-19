@@ -42,6 +42,8 @@ public class Game implements KeyListener, MouseMotionListener, PlayerListener, B
 
     private boolean hasShot;
 
+    private byte damageTaken;
+
     private final Vector2d shotPos = new Vector2d(0, 0), shotVel = new Vector2d(0, 0);
 
     private InputStream in;
@@ -134,14 +136,18 @@ public class Game implements KeyListener, MouseMotionListener, PlayerListener, B
 
     @Override
     public void shotPlayer(Player player) {
-        player.hurt();
-        System.out.println("Player " + playerNumber +" was hurt.");
+        player.hurt(1);
+        System.out.println("Player " + player + " was hurt");
+        damageTaken++;
     }
 
     public synchronized void tick(){
         hasShot = false;
+        damageTaken = 0;
         Player player = players.get(playerNumber);
-        player.tick(tileMap, keyMap, mousePos);
+        for (Player p : players){
+            p.tick(tileMap, keyMap, mousePos, p == player);
+        }
         for (int i = 0; i < bullets.size(); i++) {
             Bullet bullet = bullets.get(i);
             bullet.tick(tileMap, player);
@@ -161,6 +167,8 @@ public class Game implements KeyListener, MouseMotionListener, PlayerListener, B
         byte hasShotByte = (byte) (hasShot ? 1 : 0);
         sendData.put(hasShotByte);
         sendData.putDouble(shotPos.x).putDouble(shotPos.y).putDouble(shotVel.x).putDouble(shotVel.y);
+        if (damageTaken > 0 ) System.out.println(damageTaken);
+        sendData.put(damageTaken);
         try {
             out.write(sendData.array());
         } catch (IOException e){
@@ -177,10 +185,7 @@ public class Game implements KeyListener, MouseMotionListener, PlayerListener, B
 
             double x = buffer.getDouble();
             double y = buffer.getDouble();
-            if (i != playerNumber) {
-                player.setPosition(x, y);
 
-            }
             boolean hasShot = buffer.get() != 0;
             double shotX = buffer.getDouble();
             double shotY = buffer.getDouble();
@@ -188,6 +193,12 @@ public class Game implements KeyListener, MouseMotionListener, PlayerListener, B
             double shotDy = buffer.getDouble();
             if (hasShot){
                 bullets.add(new Bullet(shotX, shotY, shotDx, shotDy, this));
+            }
+            byte damageTaken = buffer.get();
+            if (i != playerNumber) {
+                //System.out.println("Player " + i + " Was hurt by server, " + damageTaken + " damage");
+                player.setPosition(x, y);
+                if (damageTaken > 0) player.hurt(damageTaken);
             }
         }
     }

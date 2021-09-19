@@ -8,14 +8,16 @@ import java.nio.ByteBuffer;
 
 public class PlayerHandler {
 
-    public static final int DATA_SIZE = 2 * Double.BYTES + 1 + 4 * Double.BYTES;
+    public static final int DATA_SIZE = 2 * Double.BYTES + 1 + 4 * Double.BYTES + 1;
 
     private final OutputStream out;
     private final InputStream in;
 
     private double x, y;
 
-    public boolean hasShot;
+    private boolean hasShot;
+
+    private byte damageTaken;
 
     private double shotX, shotY, shotDx, shotDy;
 
@@ -33,24 +35,32 @@ public class PlayerHandler {
                 x = buffer.getDouble();
                 y = buffer.getDouble();
                 hasShot = buffer.get() != 0 || hasShot;
-                if (hasShot) {
-                    shotX = buffer.getDouble();
-                    shotY = buffer.getDouble();
-                    shotDx = buffer.getDouble();
-                    shotDy = buffer.getDouble();
-
-                }
+                shotX = buffer.getDouble();
+                shotY = buffer.getDouble();
+                shotDx = buffer.getDouble();
+                shotDy = buffer.getDouble();
+                damageTaken = buffer.get();
+                if (damageTaken > 0) System.out.println("Server: " + damageTaken);
             } catch (IOException ioException) {
                 ioException.printStackTrace();
             }
         }
     }
 
+    private static byte toByte(boolean b){
+        return (byte) (b ? 1 : 0);
+    }
+
+    private void reset(){
+        hasShot = false;
+        damageTaken = 0;
+    }
+
     public byte[] getData() {
         ByteBuffer buffer = ByteBuffer.allocate(DATA_SIZE);
-        byte hasShot = (byte) (this.hasShot ? 1 : 0);
-        this.hasShot = false;
-        buffer.putDouble(x).putDouble(y).put(hasShot).putDouble(shotX).putDouble(shotY).putDouble(shotDx).putDouble(shotDy);
+        byte hasShot = toByte(this.hasShot);
+        buffer.putDouble(x).putDouble(y).put(hasShot).putDouble(shotX).putDouble(shotY).putDouble(shotDx).putDouble(shotDy).put(damageTaken);
+        reset();
         return buffer.array();
     }
 

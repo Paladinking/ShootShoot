@@ -62,9 +62,9 @@ public class Player {
         if (shootDelay > 0) shootDelay--;
     }
 
-    public void tick(TileMap tileMap, Map<Integer, Boolean> keyMap, Point mousePos) {
-        if (isDead()) return;
+    public void tick(TileMap tileMap, Map<Integer, Boolean> keyMap, Point mousePos, boolean activePlayer) {
         if (hurtTicks >0) hurtTicks--;
+        if (!activePlayer || isDead()) return;
         handleInputs(keyMap, mousePos, tileMap);
         if (velocity.lengthSquared() == 0) return;
         Vector2d nextPosition = new Vector2d(position.x + velocity.x, position.y + velocity.y);
@@ -106,8 +106,8 @@ public class Player {
         return Point.distanceSq(position.x, position.y, this.position.x, this.position.y) < radius * radius;
     }
 
-    public void hurt() {
-        hp--;
+    public void hurt(int amount) {
+        hp-= amount;
         hurtTicks = 10;
     }
 
