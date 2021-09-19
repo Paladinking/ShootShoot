@@ -33,6 +33,7 @@ public class Server {
     private void start() {
         while (true){
             for (int i = 0; i < playerHandlers.size(); i++){
+                if (playerHandlers.get(i).hasShot)System.out.println("Player " + i + " Shot");
                 byte[] data = playerHandlers.get(i).getData();
                 for (PlayerHandler handler : playerHandlers){
                     try {

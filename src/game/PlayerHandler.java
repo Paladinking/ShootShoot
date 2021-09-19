@@ -15,7 +15,7 @@ public class PlayerHandler {
 
     private double x, y;
 
-    private boolean hasShot;
+    public boolean hasShot;
 
     private double shotX, shotY, shotDx, shotDy;
 
@@ -50,7 +50,6 @@ public class PlayerHandler {
         ByteBuffer buffer = ByteBuffer.allocate(DATA_SIZE);
         byte hasShot = (byte) (this.hasShot ? 1 : 0);
         this.hasShot = false;
-        System.out.println("Server: " + shotX + ", " + shotY);
         buffer.putDouble(x).putDouble(y).put(hasShot).putDouble(shotX).putDouble(shotY).putDouble(shotDx).putDouble(shotDy);
         return buffer.array();
     }

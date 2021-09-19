@@ -98,7 +98,9 @@ public class Game implements KeyListener, MouseMotionListener, PlayerListener {
         while (true) {
             try {
                 receivedData = in.readNBytes(receivedData.length);
+                if (receivedData[2 * Double.BYTES] == 1) System.out.println("Received shot");
                 hasReceivedData = true;
+                handleReceivedData();
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -130,9 +132,9 @@ public class Game implements KeyListener, MouseMotionListener, PlayerListener {
         shotVel.set(velocity.x, velocity.y);
     }
 
-    public void tick(){
+    public synchronized void tick(){
         hasShot = false;
-        handleReceivedData();
+        //handleReceivedData();
         Player player = players.get(playerNumber);
         player.tick(tileMap, keyMap, mousePos);
         for (Bullet bullet : bullets) bullet.tick(tileMap);
@@ -149,10 +151,9 @@ public class Game implements KeyListener, MouseMotionListener, PlayerListener {
         sendData.clear();
         Vector2d pos = players.get(playerNumber).getPosition();
         sendData.putDouble(pos.getX()).putDouble(pos.getY());
+        if (hasShot) System.out.println("Client shot " + System.currentTimeMillis());
         byte hasShotByte = (byte) (hasShot ? 1 : 0);
-        //System.out.println("Client: " + hasShotByte);
         sendData.put(hasShotByte);
-        //System.out.println("Client: " + shotVel);
         sendData.putDouble(shotPos.x).putDouble(shotPos.y).putDouble(shotVel.x).putDouble(shotVel.y);
         try {
             out.write(sendData.array());
@@ -161,7 +162,7 @@ public class Game implements KeyListener, MouseMotionListener, PlayerListener {
         }
     }
 
-    private void handleReceivedData() {
+    private synchronized void handleReceivedData() {
         if (!hasReceivedData) return;
         hasReceivedData = false;
         ByteBuffer buffer = ByteBuffer.wrap(receivedData);
