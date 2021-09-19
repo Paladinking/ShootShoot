@@ -1,10 +1,8 @@
 package game;
 
 import java.io.IOException;
-import java.io.OutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -16,7 +14,7 @@ public class Server {
 
     List<PlayerHandler> playerHandlers = new ArrayList<>();
 
-    public void open(String ip, int port) throws IOException {
+    public void open(int port) throws IOException {
         ServerSocket serverSocket = new ServerSocket(port);
         while (playerHandlers.size() < PLAYERS){
             Socket socket = serverSocket.accept();
@@ -34,10 +32,11 @@ public class Server {
 
     private void start() {
         while (true){
-            for (PlayerHandler handler : playerHandlers){
-                for (int i = 0; i < playerHandlers.size(); i++){
+            for (int i = 0; i < playerHandlers.size(); i++){
+                byte[] data = playerHandlers.get(i).getData();
+                for (PlayerHandler handler : playerHandlers){
                     try {
-                        handler.sendData(playerHandlers.get(i).getData());
+                        handler.sendData(data);
                     } catch (IOException ioException) {
                         ioException.printStackTrace();
                     }

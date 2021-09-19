@@ -5,20 +5,19 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
 import java.nio.ByteBuffer;
-import java.util.Arrays;
 
 public class PlayerHandler {
 
     public static final int DATA_SIZE = 2 * Double.BYTES + 1 + 4 * Double.BYTES;
 
-    private OutputStream out;
-    private InputStream in;
+    private final OutputStream out;
+    private final InputStream in;
 
     private double x, y;
 
     private boolean hasShot;
 
-    private double shotX, shotY;
+    private double shotX, shotY, shotDx, shotDy;
 
     public PlayerHandler(Socket socket) throws IOException {
         this.in = socket.getInputStream();
@@ -37,6 +36,9 @@ public class PlayerHandler {
                 if (hasShot) {
                     shotX = buffer.getDouble();
                     shotY = buffer.getDouble();
+                    shotDx = buffer.getDouble();
+                    shotDy = buffer.getDouble();
+
                 }
             } catch (IOException ioException) {
                 ioException.printStackTrace();
@@ -47,7 +49,9 @@ public class PlayerHandler {
     public byte[] getData() {
         ByteBuffer buffer = ByteBuffer.allocate(DATA_SIZE);
         byte hasShot = (byte) (this.hasShot ? 1 : 0);
-        buffer.putDouble(x).putDouble(y).put(hasShot).putDouble(shotX).putDouble(shotY);
+        this.hasShot = false;
+        System.out.println("Server: " + shotX + ", " + shotY);
+        buffer.putDouble(x).putDouble(y).put(hasShot).putDouble(shotX).putDouble(shotY).putDouble(shotDx).putDouble(shotDy);
         return buffer.array();
     }
 

@@ -43,7 +43,7 @@ public class MainMenu {
             int port = Integer.parseInt(portField.getText());
             new Thread(()->{
                 try {
-                    new Server().open(ipField.getText(),Integer.parseInt(portField.getText()));
+                    new Server().open(port);
                 } catch (IOException ioException) {
                     ioException.printStackTrace();
                 }

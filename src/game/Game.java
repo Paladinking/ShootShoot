@@ -136,21 +136,24 @@ public class Game implements KeyListener, MouseMotionListener, PlayerListener {
         Player player = players.get(playerNumber);
         player.tick(tileMap, keyMap, mousePos);
         for (Bullet bullet : bullets) bullet.tick(tileMap);
-        for (int i = 0; i < bullets.size(); i++){
+        for (int i = 0; i < bullets.size(); i++) {
             if (bullets.get(i).isDead()){
                 bullets.remove(i);
                 i--;
             }
         }
-        sendData.clear();
-        Vector2d pos = player.getPosition();
-        sendData.putDouble(pos.getX()).putDouble(pos.getY());
-        sendData.put((byte) (hasShot ? 1 : 0));
-        sendData.putDouble(shotPos.x).putDouble(shotPos.y).putDouble(shotVel.x).putDouble(shotVel.y);
         sendData();
     }
 
     private void sendData() {
+        sendData.clear();
+        Vector2d pos = players.get(playerNumber).getPosition();
+        sendData.putDouble(pos.getX()).putDouble(pos.getY());
+        byte hasShotByte = (byte) (hasShot ? 1 : 0);
+        //System.out.println("Client: " + hasShotByte);
+        sendData.put(hasShotByte);
+        //System.out.println("Client: " + shotVel);
+        sendData.putDouble(shotPos.x).putDouble(shotPos.y).putDouble(shotVel.x).putDouble(shotVel.y);
         try {
             out.write(sendData.array());
         } catch (IOException e){
