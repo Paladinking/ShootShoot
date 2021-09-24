@@ -1,94 +1,101 @@
 package game;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
+import game.events.GameEvent;
+
+import java.io.*;
 import java.net.Socket;
-import java.nio.ByteBuffer;
+import java.util.ArrayDeque;
+import java.util.Arrays;
+import java.util.Queue;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 public class PlayerHandler {
 
-    public static final int DATA_SIZE = 2 * Double.BYTES + 1 + 4 * Double.BYTES + 1;
+    private final ReentrantLock queLock = new ReentrantLock();
 
-    private final OutputStream out;
-    private final InputStream in;
+    private static int bulletIndex = 0;
 
-    private double x, y;
+    private final DataOutputStream out;
+    private final DataInputStream in;
 
-    private boolean hasShot;
+    private final Queue<GameEvent> events;
 
-    private byte damageTaken;
+    private final int number;
 
-    private double shotX, shotY, shotDx, shotDy;
+    public PlayerHandler(Socket socket, int number) throws IOException {
+        this.in = new DataInputStream(socket.getInputStream());
+        this.out = new DataOutputStream(socket.getOutputStream());
+        this.events = new ArrayDeque<>();
+        this.number = number;
+    }
 
-    public PlayerHandler(Socket socket) throws IOException {
-        this.in = socket.getInputStream();
-        this.out = socket.getOutputStream();
+    public Lock getLock(){
+        return queLock;
     }
 
     public void start() {
-        while (true) {
-            try {
-                byte[] data;
-                data = in.readNBytes(DATA_SIZE);
-                ByteBuffer buffer = ByteBuffer.wrap(data);
-                x = buffer.getDouble();
-                y = buffer.getDouble();
-                hasShot = buffer.get() != 0 || hasShot;
-                shotX = buffer.getDouble();
-                shotY = buffer.getDouble();
-                shotDx = buffer.getDouble();
-                shotDy = buffer.getDouble();
-                damageTaken = buffer.get();
-                if (damageTaken > 0) System.out.println("Server: " + damageTaken);
-            } catch (IOException ioException) {
-                ioException.printStackTrace();
+        try {
+            while (true) {
+                readEvents();
             }
+        } catch (IOException ioException) {
+            ioException.printStackTrace();
         }
     }
 
-    private static byte toByte(boolean b){
-        return (byte) (b ? 1 : 0);
+    private void readEvents() throws IOException {
+        int totalEvents = in.readInt();
+            for (int i = 0; i < totalEvents; i++) {
+                GameEvent e = GameEvent.read(in);
+                if (e == null) {
+                    byte[] b = in.readAllBytes();
+                    System.out.println(Arrays.toString(b));
+                    return;
+                }
+                e.handle(this);
+                queLock.lock();
+                try {
+                    events.add(e);
+                } finally {
+                    queLock.unlock();
+                }
+            }
+
     }
 
-    private void reset(){
-        hasShot = false;
-        damageTaken = 0;
+    public Queue<GameEvent> getEvents() {
+        return events;
     }
 
-    public byte[] getData() {
-        ByteBuffer buffer = ByteBuffer.allocate(DATA_SIZE);
-        byte hasShot = toByte(this.hasShot);
-        buffer.putDouble(x).putDouble(y).put(hasShot).putDouble(shotX).putDouble(shotY).putDouble(shotDx).putDouble(shotDy).put(damageTaken);
-        reset();
-        return buffer.array();
+    public void sendEvent(GameEvent event) throws IOException {
+        event.write(out);
     }
 
-    public void sendData(byte[] data) throws IOException {
-        out.write(data);
-        out.flush();
-    }
-
-    public void sendInitialData(int index, int players, int x, int y) throws IOException {
-        this.x = x;
-        this.y = y;
-        ByteBuffer buffer = ByteBuffer.allocate(2 * Integer.BYTES + 2 * Integer.BYTES * players);
-        buffer.putInt(players);
+    public void sendInitialData(int players, int[] startingPositions) throws IOException {
+        out.writeInt(players);
         for (int i = 0; i < players; i++) {
-            buffer.putInt(x).putInt(y);
+            out.writeInt(startingPositions[2 * i]);
+            out.writeInt(startingPositions[2 * i + 1]);
         }
-        buffer.putInt(index);
-        byte[] data = buffer.array();
-        out.write(data);
+        out.writeInt(number);
         out.flush();
     }
 
-    @Override
-    public String toString() {
-        return "PlayerHandler{" +
-               "x=" + x +
-               ", y=" + y +
-               ", hasShot=" + hasShot +
-               '}';
+    public void sendInt(int i)throws IOException {
+        out.writeInt(i);
+    }
+
+    public synchronized static int getBulletIndex() {
+        bulletIndex++;
+        return bulletIndex;
+    }
+
+    public void flush() throws IOException{
+        out.flush();
+    }
+
+    public int getNumber() {
+        return number;
     }
 }

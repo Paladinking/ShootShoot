@@ -1,5 +1,7 @@
 package game;
 
+import game.listeners.BulletListener;
+
 import javax.vecmath.Vector2d;
 import java.awt.*;
 import java.util.ArrayList;
@@ -97,4 +99,5 @@ public class Bullet {
     public Vector2d getPosition() {
         return position;
     }
+
 }

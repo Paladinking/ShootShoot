@@ -1,5 +1,9 @@
 package game;
 
+import game.events.GameEvent;
+import game.listeners.BulletListener;
+import game.listeners.PlayerListener;
+
 import javax.imageio.ImageIO;
 import javax.swing.*;
 import javax.vecmath.Vector2d;
@@ -9,15 +13,12 @@ import java.awt.event.KeyListener;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseMotionListener;
 import java.awt.image.BufferedImage;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.nio.ByteBuffer;
+import java.io.*;
 import java.util.*;
 import java.util.List;
 import java.util.Timer;
 
-public class Game implements KeyListener, MouseMotionListener, PlayerListener, BulletListener{
+public class Game implements KeyListener, MouseMotionListener, PlayerListener, BulletListener {
 
     public static final int WIDTH = 96, HEIGHT = 54, TILE_SIZE = 20;
 
@@ -25,7 +26,9 @@ public class Game implements KeyListener, MouseMotionListener, PlayerListener, B
 
     private final Map<Integer, Boolean> keyMap;
 
-    private final List<Bullet> bullets;
+    private Timer timer;
+
+    private final Map<Integer, Bullet> bullets;
 
     private TileMap tileMap;
 
@@ -35,31 +38,25 @@ public class Game implements KeyListener, MouseMotionListener, PlayerListener, B
 
     private final Point mousePos;
 
-
-    boolean hasReceivedData;
-    private byte[] receivedData;
-    private ByteBuffer sendData;
-
-    private boolean hasShot;
-
     private byte damageTaken;
 
-    private final Vector2d shotPos = new Vector2d(0, 0), shotVel = new Vector2d(0, 0);
+    private final Stack<GameEvent> events;
 
-    private InputStream in;
-    private OutputStream out;
+    private DataInputStream in;
+    private DataOutputStream out;
 
     public Game(int width, int height) {
         this.width = width;
         this.height = height;
         this.keyMap = new HashMap<>();
         this.mousePos = new Point(0, 0);
-        this.bullets = new ArrayList<>();
+        this.bullets = new HashMap<>();
         this.players = new ArrayList<>();
+        this.events = new Stack<>();
     }
 
 
-    private void initKeys(){
+    private void initKeys() {
         keyMap.put(KeyEvent.VK_W, false);
         keyMap.put(KeyEvent.VK_A, false);
         keyMap.put(KeyEvent.VK_S, false);
@@ -67,26 +64,26 @@ public class Game implements KeyListener, MouseMotionListener, PlayerListener, B
         keyMap.put(KeyEvent.VK_SPACE, false);
     }
 
-    public void init(){
+    public void init() {
         tileMap = new TileMap(WIDTH, HEIGHT, TILE_SIZE);
         tileMap.readFromImage(getLevelImage());
         initKeys();
     }
 
-    private BufferedImage getLevelImage(){
+    private BufferedImage getLevelImage() {
         try {
             return ImageIO.read(ClassLoader.getSystemResource("images/stage.png"));
-        } catch (IOException e){
+        } catch (IOException e) {
             return new BufferedImage(20, 20, BufferedImage.TYPE_INT_ARGB);
         }
     }
 
     public void start(JPanel panel, InputStream inputStream, OutputStream outputStream) throws IOException {
-        this.in = inputStream;
-        this.out = outputStream;
+        this.in = new DataInputStream(inputStream);
+        this.out = new DataOutputStream(outputStream);
         receiveInitialData();
         new Thread(this::receiveData).start();
-        Timer timer = new Timer();
+        timer = new Timer();
         timer.scheduleAtFixedRate(new TimerTask() {
             @Override
             public void run() {
@@ -97,119 +94,124 @@ public class Game implements KeyListener, MouseMotionListener, PlayerListener, B
     }
 
     private void receiveData() {
-        while (true) {
-            try {
-                receivedData = in.readNBytes(receivedData.length);
-                if (receivedData[2 * Double.BYTES] == 1) System.out.println("Received shot");
-                hasReceivedData = true;
-                handleReceivedData();
-            } catch (IOException e) {
-                e.printStackTrace();
+        try {
+            while (true) {
+                int totalPlayers = in.readInt();
+                for (int i = 0; i < totalPlayers; i++) {
+                    int source = in.readInt();
+                    int totalEvents = in.readInt();
+                    GameEvent[] events = new GameEvent[totalEvents];
+                    for (int j = 0; j < totalEvents; j++){
+                        events[j] = GameEvent.read(in);
+                    }
+                    executeEvents(source, events);
+                }
             }
+        } catch (IOException e) {
+            e.printStackTrace();
         }
+    }
 
+    private synchronized void executeEvents(int player, GameEvent[] events){
+        for (GameEvent event : events){
+            event.execute(this, player);
+        }
+    }
+
+    public void createBullet(double xPos, double yPos, double xVel, double yVel, int index) {
+        synchronized (bullets) {
+            bullets.put(index, new Bullet(new Vector2d(xPos, yPos), new Vector2d(xVel, yVel), this));
+        }
+    }
+
+    public void removeBullet(int index, int source) {
+        if (source == playerNumber) return;
+        synchronized (bullets) {
+            bullets.remove(index);
+        }
+    }
+
+    public void hurtPlayer(int amount, int source){
+        if (source == playerNumber) return;;
+        players.get(source).hurt(amount);
+    }
+
+    public void movePlayer(double newX, double newY, int source){
+        if (source == playerNumber) return;
+        players.get(source).setPosition(newX, newY);
     }
 
     private void receiveInitialData() throws IOException {
-        byte[] data = in.readNBytes(Integer.BYTES);
-        byte numberOfPlayers = data[3];
-        data = in.readNBytes(Integer.BYTES + 2 * Integer.BYTES * numberOfPlayers);
+        int numberOfPlayers = in.readInt();
         final Color[] colors = new Color[]{Color.RED, Color.GREEN, Color.BLUE, Color.BLACK};
-        for (int i = 0; i < numberOfPlayers; i++){
-            int x = data[2 + 2 * Integer.BYTES * i] * 256 + data[3 + 2 * Integer.BYTES * i];
-            int y = data[6 + 2 * Integer.BYTES * i] * 256 + data[7 + 2 * Integer.BYTES * i];
+        for (int i = 0; i < numberOfPlayers; i++) {
+            int x = in.readInt(), y = in.readInt();
             Player player = new Player(x, y, TILE_SIZE * 2, colors[i], this);
             players.add(player);
         }
-        playerNumber = data[data.length -1];
-
-        receivedData = new byte[PlayerHandler.DATA_SIZE * numberOfPlayers];
-        sendData = ByteBuffer.allocate(PlayerHandler.DATA_SIZE);
+        playerNumber = in.readInt();
     }
 
     @Override
-    public void firedShot(Vector2d pos, Vector2d velocity) {
-        hasShot = true;
-        shotPos.set(pos.x, pos.y);
-        shotVel.set(velocity.x, velocity.y);
+    public void playerFiredShot(Vector2d pos, Vector2d velocity) {
+        events.add(new GameEvent.BulletCreated(pos.x, pos.y, velocity.x, velocity.y));
+    }
+
+    @Override
+    public void playerMoved(Vector2d pos){
+        events.add(new GameEvent.PlayerMoved(pos.x, pos.y));
     }
 
     @Override
     public void shotPlayer(Player player) {
         player.hurt(1);
-        System.out.println("Player " + player + " was hurt");
         damageTaken++;
     }
 
-    public synchronized void tick(){
-        hasShot = false;
+    public synchronized void tick() {
         damageTaken = 0;
         Player player = players.get(playerNumber);
-        for (Player p : players){
+        for (Player p : players) {
             p.tick(tileMap, keyMap, mousePos, p == player);
         }
-        for (int i = 0; i < bullets.size(); i++) {
-            Bullet bullet = bullets.get(i);
+        Iterator<Map.Entry<Integer, Bullet>> it = bullets.entrySet().iterator();
+        while (it.hasNext()) {
+            Map.Entry<Integer, Bullet> entry = it.next();
+            Bullet bullet = entry.getValue();
             bullet.tick(tileMap, player);
             if (bullet.isDead()) {
-                bullets.remove(i);
-                i--;
+                it.remove();
+                events.add(new GameEvent.BulletRemoved(entry.getKey()));
             }
         }
+        if (damageTaken > 0) events.add(new GameEvent.PlayerHurt(damageTaken));
         sendData();
     }
 
     private void sendData() {
-        sendData.clear();
-        Vector2d pos = players.get(playerNumber).getPosition();
-        sendData.putDouble(pos.getX()).putDouble(pos.getY());
-        if (hasShot) System.out.println("Client shot " + System.currentTimeMillis());
-        byte hasShotByte = (byte) (hasShot ? 1 : 0);
-        sendData.put(hasShotByte);
-        sendData.putDouble(shotPos.x).putDouble(shotPos.y).putDouble(shotVel.x).putDouble(shotVel.y);
-        if (damageTaken > 0 ) System.out.println(damageTaken);
-        sendData.put(damageTaken);
         try {
-            out.write(sendData.array());
-        } catch (IOException e){
+            int totalEvents = events.size();
+            out.writeInt(totalEvents);
+            while (!events.isEmpty()) {
+                GameEvent e = events.pop();
+                e.write(out);
+            }
+            out.flush();
+        } catch (IOException e) {
             e.printStackTrace();
-        }
-    }
-
-    private synchronized void handleReceivedData() {
-        if (!hasReceivedData) return;
-        hasReceivedData = false;
-        ByteBuffer buffer = ByteBuffer.wrap(receivedData);
-        for (int i = 0; i < players.size(); i++){
-            Player player = players.get(i);
-
-            double x = buffer.getDouble();
-            double y = buffer.getDouble();
-
-            boolean hasShot = buffer.get() != 0;
-            double shotX = buffer.getDouble();
-            double shotY = buffer.getDouble();
-            double shotDx = buffer.getDouble();
-            double shotDy = buffer.getDouble();
-            if (hasShot){
-                bullets.add(new Bullet(shotX, shotY, shotDx, shotDy, this));
-            }
-            byte damageTaken = buffer.get();
-            if (i != playerNumber) {
-                //System.out.println("Player " + i + " Was hurt by server, " + damageTaken + " damage");
-                player.setPosition(x, y);
-                if (damageTaken > 0) player.hurt(damageTaken);
-            }
+            timer.cancel();
         }
     }
 
 
-    public void draw(Graphics2D g, Dimension panelSize){
+    public void draw(Graphics2D g, Dimension panelSize) {
         double scalingFactor = panelSize.width / ((double) WIDTH * TILE_SIZE);
         g.scale(scalingFactor, scalingFactor);
         tileMap.draw(g);
-        for (Player player: players) if (!player.isDead()) player.draw(g);
-        for (int i = 0; i < bullets.size(); i++) bullets.get(i).draw(g);
+        for (Player player : players) if (!player.isDead()) player.draw(g);
+        synchronized (bullets){
+            for (Bullet bullet : bullets.values()) bullet.draw(g);
+        }
     }
 
 

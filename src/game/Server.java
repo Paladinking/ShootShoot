@@ -1,10 +1,15 @@
 package game;
 
+import game.events.GameEvent;
+
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Queue;
+import java.util.concurrent.locks.Lock;
 
 public class Server {
 
@@ -16,14 +21,14 @@ public class Server {
 
     public void open(int port) throws IOException {
         ServerSocket serverSocket = new ServerSocket(port);
-        while (playerHandlers.size() < PLAYERS){
+        while (playerHandlers.size() < PLAYERS) {
             Socket socket = serverSocket.accept();
-            playerHandlers.add(new PlayerHandler(socket));
+            playerHandlers.add(new PlayerHandler(socket, playerHandlers.size()));
             System.out.println(socket.getInetAddress() + " connected!");
         }
-        for (int i = 0; i < playerHandlers.size(); i++){
+        for (int i = 0; i < playerHandlers.size(); i++) {
             PlayerHandler handler = playerHandlers.get(i);
-            handler.sendInitialData(i, PLAYERS, startingPositions[2 * i], startingPositions[2 * i + 1]);
+            handler.sendInitialData(PLAYERS, startingPositions);
             new Thread(handler::start).start();
         }
         start();
@@ -31,16 +36,40 @@ public class Server {
     }
 
     private void start() {
-        while (true){
-            for (int i = 0; i < playerHandlers.size(); i++){
-                byte[] data = playerHandlers.get(i).getData();
-                for (PlayerHandler handler : playerHandlers){
+        boolean running = true;
+        while (running) {
+            try {
+                for (int i = 0; i < playerHandlers.size(); i++) {
+                    playerHandlers.get(i).sendInt(playerHandlers.size());
+                }
+                for (int i = 0; i < playerHandlers.size(); i++) {
+                    for (PlayerHandler handler : playerHandlers){
+                        handler.sendInt(i);
+                    }
+                    Lock lock = playerHandlers.get(i).getLock();
+                    lock.lock();
                     try {
-                        handler.sendData(data);
-                    } catch (IOException ioException) {
-                        ioException.printStackTrace();
+                        Queue<GameEvent> events = playerHandlers.get(i).getEvents();
+                        int totalEvents = events.size();
+                        for (PlayerHandler handler : playerHandlers){
+                            handler.sendInt(totalEvents);
+                        }
+                        for (int j = 0; j < totalEvents; j++){
+                            GameEvent e = events.poll();
+                            for (PlayerHandler handler : playerHandlers) { ;
+                                handler.sendEvent(e);
+                            }
+                        }
+                    } finally {
+                        lock.unlock();
                     }
                 }
+                for (PlayerHandler handler : playerHandlers){
+                    handler.flush();
+                }
+            } catch (IOException ioException) {
+                ioException.printStackTrace();
+                running = false;
             }
             try {
                 Thread.sleep(10);

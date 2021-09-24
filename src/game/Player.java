@@ -1,5 +1,7 @@
 package game;
 
+import game.listeners.PlayerListener;
+
 import javax.vecmath.Vector2d;
 import java.awt.*;
 import java.awt.event.KeyEvent;
@@ -9,7 +11,7 @@ public class Player {
 
     private static final int SPEED = 3, SHOOT_DELAY = 100, START_HP = 5;
 
-    private static final double FRICTION = 0.7;
+    private static final double FRICTION = 0.7, MINIMUM_VELOCITY = 0.05;
     private final Vector2d position, velocity;
 
     private final int radius;
@@ -56,7 +58,7 @@ public class Player {
             if (tileMap.isOpen(bulletPos)) {
                 shootDelay = SHOOT_DELAY;
                 bulletVector.scale(Bullet.BULLET_SPEED);
-                listener.firedShot(bulletPos, bulletVector);
+                listener.playerFiredShot(bulletPos, bulletVector);
             }
         }
         if (shootDelay > 0) shootDelay--;
@@ -66,7 +68,9 @@ public class Player {
         if (hurtTicks >0) hurtTicks--;
         if (!activePlayer || isDead()) return;
         handleInputs(keyMap, mousePos, tileMap);
-        if (velocity.lengthSquared() == 0) return;
+        if (velocity.lengthSquared() < MINIMUM_VELOCITY) {
+            return;
+        }
         Vector2d nextPosition = new Vector2d(position.x + velocity.x, position.y + velocity.y);
         int tileSize = tileMap.getTileSize();
         int posX = (int) nextPosition.x, posY = (int) nextPosition.y;
@@ -89,6 +93,7 @@ public class Player {
             }
         }
         position.set(nextPosition);
+        listener.playerMoved(position);
 
     }
 
