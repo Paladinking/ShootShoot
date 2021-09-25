@@ -1,4 +1,7 @@
-package game;
+package game.ui;
+
+import game.Game;
+import game.client.GameClient;
 
 import javax.swing.*;
 import java.awt.*;
@@ -24,11 +27,9 @@ public class GamePanel extends JPanel {
         addMouseMotionListener(game);
     }
 
-    public void startGame(Socket connection) {
-
-
+    public void startGame(String ip, int port) {
         try {
-            game.start(this, connection.getInputStream(), connection.getOutputStream());
+            game.start(this, ip, port);
         } catch (IOException ioException) {
             ioException.printStackTrace();
         }

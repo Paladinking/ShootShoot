@@ -1,4 +1,4 @@
-package ui;
+package game.ui;
 
 
 import java.awt.*;

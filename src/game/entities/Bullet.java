@@ -1,5 +1,6 @@
-package game;
+package game.entities;
 
+import game.tiles.TileMap;
 import game.listeners.BulletListener;
 
 import javax.vecmath.Vector2d;

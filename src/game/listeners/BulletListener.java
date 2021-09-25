@@ -1,6 +1,6 @@
 package game.listeners;
 
-import game.Player;
+import game.entities.Player;
 
 public interface BulletListener {
 

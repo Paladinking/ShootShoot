@@ -1,4 +1,4 @@
-package game;
+package game.server;
 
 import game.events.GameEvent;
 

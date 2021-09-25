@@ -1,4 +1,4 @@
-package game;
+package game.tiles;
 
 import javax.vecmath.Vector2d;
 import java.awt.*;

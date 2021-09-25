@@ -1,7 +1,7 @@
 package game.events;
 
 import game.Game;
-import game.PlayerHandler;
+import game.server.PlayerHandler;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;

@@ -1,8 +1,7 @@
-package game;
+package game.server;
 
 import game.events.GameEvent;
 
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -13,14 +12,26 @@ import java.util.concurrent.locks.Lock;
 
 public class Server {
 
+    private final Object waiter;
+
+    private boolean ready = false;
+
     private static final int PLAYERS = 2;
 
     private final int[] startingPositions = new int[]{100, 100, 1820, 100, 100, 980, 1820, 980};
 
     List<PlayerHandler> playerHandlers = new ArrayList<>();
 
+    public Server() {
+        this.waiter = new Object();
+    }
+
     public void open(int port) throws IOException {
         ServerSocket serverSocket = new ServerSocket(port);
+        ready = true;
+        synchronized (waiter){
+            waiter.notify();
+        }
         while (playerHandlers.size() < PLAYERS) {
             Socket socket = serverSocket.accept();
             playerHandlers.add(new PlayerHandler(socket, playerHandlers.size()));
@@ -35,15 +46,24 @@ public class Server {
 
     }
 
+    public void waitForReady(){
+        while (!ready) {
+            synchronized (waiter) {
+                try {
+                    waiter.wait();
+                } catch (InterruptedException ignored) {
+
+                }
+            }
+        }
+    }
+
     private void start() {
         boolean running = true;
         while (running) {
             try {
                 for (int i = 0; i < playerHandlers.size(); i++) {
-                    playerHandlers.get(i).sendInt(playerHandlers.size());
-                }
-                for (int i = 0; i < playerHandlers.size(); i++) {
-                    for (PlayerHandler handler : playerHandlers){
+                    for (PlayerHandler handler : playerHandlers) {
                         handler.sendInt(i);
                     }
                     Lock lock = playerHandlers.get(i).getLock();
@@ -55,7 +75,7 @@ public class Server {
                             handler.sendInt(totalEvents);
                         }
                         for (int j = 0; j < totalEvents; j++){
-                            GameEvent e = events.poll();
+                            GameEvent e = events.remove();
                             for (PlayerHandler handler : playerHandlers) { ;
                                 handler.sendEvent(e);
                             }

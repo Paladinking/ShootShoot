@@ -1,17 +1,15 @@
-package game;
+package game.ui;
 
-import ui.GridConstraints;
-import ui.MyGridLayout;
+import game.Game;
+import game.server.Server;
 
 import javax.swing.*;
 import java.awt.*;
 import java.io.IOException;
-import java.net.Socket;
-import java.util.logging.Logger;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 public class MainMenu {
-
-
 
     public static void main(String[] args) {
         Game game = new Game(Game.WIDTH, Game.HEIGHT);
@@ -44,50 +42,33 @@ public class MainMenu {
         host.addActionListener((e)->{
             String ip = "127.0.0.1";
             int port = Integer.parseInt(portField.getText());
-            new Thread(()->{
+            Server server = new Server();
+            new Thread(()-> {
                 try {
-                    new Server().open(port);
+                    server.open(port);
                 } catch (IOException ioException) {
                     ioException.printStackTrace();
                 }
             }).start();
-            try {
-                startGame(frame, gamePanel, connect(ip, port));
-            } catch (IOException ioException) {
-                ioException.printStackTrace();
-            }
+            server.waitForReady();
+            startGame(frame, gamePanel, ip, port);
 
         });
         join.addActionListener((e)-> {
             String ip = ipField.getText();
             int port = Integer.parseInt(portField.getText());
-            try {
-                startGame(frame, gamePanel, connect(ip, port));
-            } catch (IOException ioException) {
-                ioException.printStackTrace();
-            }
-
+            startGame(frame, gamePanel, ip, port);
         });
         frame.add(mainMenuPanel);
     }
 
-    private static Socket connect(String ip, int port) throws IOException {
-        try {
-            Thread.sleep(100);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-        return new Socket(ip, port);
-
-    }
-
-    public static void startGame(JFrame frame, GamePanel gamePanel, Socket connection){
+    public static void startGame(JFrame frame, GamePanel gamePanel, String ip, int port){
         frame.getContentPane().remove(0);
         frame.add(gamePanel);
         frame.pack();
         gamePanel.requestFocus();
         gamePanel.addListeners();
-        gamePanel.startGame(connection);
+        gamePanel.startGame(ip, port);
     }
 
 }

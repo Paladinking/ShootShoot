@@ -1,8 +1,12 @@
 package game;
 
+import game.client.GameClient;
+import game.entities.Bullet;
+import game.entities.Player;
 import game.events.GameEvent;
 import game.listeners.BulletListener;
 import game.listeners.PlayerListener;
+import game.tiles.TileMap;
 
 import javax.imageio.ImageIO;
 import javax.swing.*;
@@ -22,11 +26,15 @@ public class Game implements KeyListener, MouseMotionListener, PlayerListener, B
 
     public static final int WIDTH = 96, HEIGHT = 54, TILE_SIZE = 20;
 
+    private static final int INITIAL_EVENT_CAPACITY = 32;
+
     private final int width, height;
 
     private final Map<Integer, Boolean> keyMap;
 
     private Timer timer;
+
+    private GameClient client;
 
     private final Map<Integer, Bullet> bullets;
 
@@ -40,10 +48,7 @@ public class Game implements KeyListener, MouseMotionListener, PlayerListener, B
 
     private byte damageTaken;
 
-    private final Stack<GameEvent> events;
-
-    private DataInputStream in;
-    private DataOutputStream out;
+    private final Queue<GameEvent> events;
 
     public Game(int width, int height) {
         this.width = width;
@@ -52,7 +57,7 @@ public class Game implements KeyListener, MouseMotionListener, PlayerListener, B
         this.mousePos = new Point(0, 0);
         this.bullets = new HashMap<>();
         this.players = new ArrayList<>();
-        this.events = new Stack<>();
+        this.events = new ArrayDeque<>(INITIAL_EVENT_CAPACITY);
     }
 
 
@@ -78,9 +83,9 @@ public class Game implements KeyListener, MouseMotionListener, PlayerListener, B
         }
     }
 
-    public void start(JPanel panel, InputStream inputStream, OutputStream outputStream) throws IOException {
-        this.in = new DataInputStream(inputStream);
-        this.out = new DataOutputStream(outputStream);
+    public void start(JPanel panel, String ip, int port) throws IOException {
+        this.client = new GameClient(ip, port);
+        client.connect();
         receiveInitialData();
         new Thread(this::receiveData).start();
         timer = new Timer();
@@ -93,63 +98,16 @@ public class Game implements KeyListener, MouseMotionListener, PlayerListener, B
         }, 16, 16);
     }
 
-    private void receiveData() {
-        try {
-            while (true) {
-                int totalPlayers = in.readInt();
-                for (int i = 0; i < totalPlayers; i++) {
-                    int source = in.readInt();
-                    int totalEvents = in.readInt();
-                    GameEvent[] events = new GameEvent[totalEvents];
-                    for (int j = 0; j < totalEvents; j++){
-                        events[j] = GameEvent.read(in);
-                    }
-                    executeEvents(source, events);
-                }
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
-    private synchronized void executeEvents(int player, GameEvent[] events){
-        for (GameEvent event : events){
-            event.execute(this, player);
-        }
-    }
-
-    public void createBullet(double xPos, double yPos, double xVel, double yVel, int index) {
-        synchronized (bullets) {
-            bullets.put(index, new Bullet(new Vector2d(xPos, yPos), new Vector2d(xVel, yVel), this));
-        }
-    }
-
-    public void removeBullet(int index, int source) {
-        if (source == playerNumber) return;
-        synchronized (bullets) {
-            bullets.remove(index);
-        }
-    }
-
-    public void hurtPlayer(int amount, int source){
-        if (source == playerNumber) return;;
-        players.get(source).hurt(amount);
-    }
-
-    public void movePlayer(double newX, double newY, int source){
-        if (source == playerNumber) return;
-        players.get(source).setPosition(newX, newY);
-    }
 
     private void receiveInitialData() throws IOException {
-        int numberOfPlayers = in.readInt();
+        int numberOfPlayers = client.readInt();
         final Color[] colors = new Color[]{Color.RED, Color.GREEN, Color.BLUE, Color.BLACK};
         for (int i = 0; i < numberOfPlayers; i++) {
-            int x = in.readInt(), y = in.readInt();
+            int x = client.readInt(), y = client.readInt();
             Player player = new Player(x, y, TILE_SIZE * 2, colors[i], this);
             players.add(player);
         }
-        playerNumber = in.readInt();
+        playerNumber = client.readInt();
     }
 
     @Override
@@ -185,31 +143,20 @@ public class Game implements KeyListener, MouseMotionListener, PlayerListener, B
             }
         }
         if (damageTaken > 0) events.add(new GameEvent.PlayerHurt(damageTaken));
-        sendData();
-    }
-
-    private void sendData() {
         try {
-            int totalEvents = events.size();
-            out.writeInt(totalEvents);
-            while (!events.isEmpty()) {
-                GameEvent e = events.pop();
-                e.write(out);
-            }
-            out.flush();
+            client.sendData(events);
         } catch (IOException e) {
             e.printStackTrace();
             timer.cancel();
         }
     }
 
-
     public void draw(Graphics2D g, Dimension panelSize) {
         double scalingFactor = panelSize.width / ((double) WIDTH * TILE_SIZE);
         g.scale(scalingFactor, scalingFactor);
         tileMap.draw(g);
-        for (Player player : players) if (!player.isDead()) player.draw(g);
-        synchronized (bullets){
+        synchronized (this) {
+            for (Player player : players) if (!player.isDead()) player.draw(g);
             for (Bullet bullet : bullets.values()) bullet.draw(g);
         }
     }
@@ -241,6 +188,60 @@ public class Game implements KeyListener, MouseMotionListener, PlayerListener, B
     @Override
     public void mouseMoved(MouseEvent e) {
         mousePos.setLocation(e.getX(), e.getY());
+    }
+
+
+    /*
+     * These methods are running on a different thread than the rest of the program.
+     *
+     */
+
+
+    private void receiveData() {
+        try {
+            while (true) {
+                GameEvent[][] events = new GameEvent[players.size()][];
+                client.receiveData(players.size(), events);
+                for (int i = 0; i < events.length; i++){
+                    executeEvents(i, events[i]);
+                }
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void executeEvents(int player, GameEvent[] events){
+        for (GameEvent event : events){
+            event.execute(this, player);
+        }
+    }
+
+    public void createBullet(double xPos, double yPos, double xVel, double yVel, int index) {
+        synchronized (this) {
+            bullets.put(index, new Bullet(new Vector2d(xPos, yPos), new Vector2d(xVel, yVel), this));
+        }
+    }
+
+    public void removeBullet(int index, int source) {
+        if (source == playerNumber) return;
+        synchronized (this) {
+            bullets.remove(index);
+        }
+    }
+
+    public void hurtPlayer(int amount, int source){
+        if (source == playerNumber) return;
+        synchronized (this) {
+            players.get(source).hurt(amount);
+        }
+    }
+
+    public void movePlayer(double newX, double newY, int source){
+        if (source == playerNumber) return;
+        synchronized (this) {
+            players.get(source).setPosition(newX, newY);
+        }
     }
 
 
