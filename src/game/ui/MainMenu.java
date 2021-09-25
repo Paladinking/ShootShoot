@@ -6,13 +6,12 @@ import game.server.Server;
 import javax.swing.*;
 import java.awt.*;
 import java.io.IOException;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
 
 public class MainMenu {
 
     public static void main(String[] args) {
-        Game game = new Game(Game.WIDTH, Game.HEIGHT);
+        final Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
+        Game game = new Game(Game.WIDTH, Game.HEIGHT, screenSize.width, screenSize.height);
         game.init();
         EventQueue.invokeLater(()->{
             JFrame frame = new JFrame("Skjuta Skjuta");
@@ -20,7 +19,7 @@ public class MainMenu {
             GamePanel gamePanel = new GamePanel(game);
             frame.setExtendedState(Frame.MAXIMIZED_BOTH);
             frame.setUndecorated(true);
-            gamePanel.setPreferredSize(Toolkit.getDefaultToolkit().getScreenSize());
+            gamePanel.setPreferredSize(screenSize);
 
             addMainMenuPanel(frame, gamePanel);
             frame.pack();

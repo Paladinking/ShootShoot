@@ -30,6 +30,8 @@ public class Game implements KeyListener, MouseMotionListener, PlayerListener, B
 
     private final int width, height;
 
+    private final double scalingFactor;
+
     private final Map<Integer, Boolean> keyMap;
 
     private Timer timer;
@@ -50,9 +52,10 @@ public class Game implements KeyListener, MouseMotionListener, PlayerListener, B
 
     private final Queue<GameEvent> events;
 
-    public Game(int width, int height) {
+    public Game(int width, int height, int pixelWidth, int pixelHeight) {
         this.width = width;
         this.height = height;
+        this.scalingFactor = pixelWidth / ((double) width * TILE_SIZE);
         this.keyMap = new HashMap<>();
         this.mousePos = new Point(0, 0);
         this.bullets = new HashMap<>();
@@ -151,8 +154,7 @@ public class Game implements KeyListener, MouseMotionListener, PlayerListener, B
         }
     }
 
-    public void draw(Graphics2D g, Dimension panelSize) {
-        double scalingFactor = panelSize.width / ((double) WIDTH * TILE_SIZE);
+    public void draw(Graphics2D g) {
         g.scale(scalingFactor, scalingFactor);
         tileMap.draw(g);
         synchronized (this) {
@@ -188,6 +190,8 @@ public class Game implements KeyListener, MouseMotionListener, PlayerListener, B
     @Override
     public void mouseMoved(MouseEvent e) {
         mousePos.setLocation(e.getX(), e.getY());
+        mousePos.x *= scalingFactor;
+        mousePos.y *= scalingFactor;
     }
 
 
