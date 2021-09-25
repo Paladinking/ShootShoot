@@ -10,18 +10,20 @@ import java.util.Map;
 
 public class Player {
 
-    private static final int SPEED = 3, SHOOT_DELAY = 100, START_HP = 5;
+    private static final int SPEED = 3, SHOOT_DELAY = 100, START_HP = 5, MAX_STAMINA = 100;
 
-    private static final double FRICTION = 0.7, MINIMUM_VELOCITY = 0.05;
+    private static final double FRICTION = 0.7, MINIMUM_VELOCITY = 0.05, SPRINT_FACTOR = 2.0;
     private final Vector2d position, velocity;
 
     private final int radius;
 
     private final Color color;
 
+    private boolean sprintEnded;
+
     private int hurtTicks;
 
-    private int shootDelay, hp;
+    private int shootDelay, hp, stamina;
 
     private final PlayerListener listener;
 
@@ -40,17 +42,29 @@ public class Player {
         g.fillOval((int) position.x - radius, (int) position.y - radius, radius * 2, radius * 2);
     }
 
-    private void handleInputs(Map<Integer, Boolean> keyMap, Point mousePos, TileMap tileMap){
+    private void handleInputs(Map<Integer, Boolean> keyMap, Point mousePos, TileMap tileMap) {
+        boolean sprinting = keyMap.get(KeyEvent.VK_SHIFT) && stamina > 0 && !sprintEnded;
+        if (sprinting) {
+            stamina-=2;
+            if (stamina <= 0){
+                sprintEnded = true;
+            }
+        } else if (stamina  < MAX_STAMINA) {
+            stamina++;
+        }
+        if (sprintEnded && !keyMap.get(KeyEvent.VK_SHIFT)) sprintEnded = false;
+
+
         Vector2d acceleration = new Vector2d(0, 0);
         if (keyMap.get(KeyEvent.VK_W)) acceleration.y--;
         if (keyMap.get(KeyEvent.VK_A)) acceleration.x--;
         if (keyMap.get(KeyEvent.VK_S)) acceleration.y++;
         if (keyMap.get(KeyEvent.VK_D)) acceleration.x++;
         if (acceleration.lengthSquared() > 0) acceleration.normalize();
-        acceleration.scale(SPEED);
+        acceleration.scale(sprinting ? SPEED * SPRINT_FACTOR:  SPEED);
         velocity.add(acceleration);
         velocity.scale(FRICTION);
-        if (keyMap.get(KeyEvent.VK_SPACE) && shootDelay == 0){
+        if (keyMap.get(KeyEvent.VK_SPACE) && shootDelay == 0) {
 
             Vector2d bulletVector = new Vector2d(mousePos.x - position.x, mousePos.y - position.y);
             bulletVector.normalize();
@@ -66,7 +80,7 @@ public class Player {
     }
 
     public void tick(TileMap tileMap, Map<Integer, Boolean> keyMap, Point mousePos, boolean activePlayer) {
-        if (hurtTicks >0) hurtTicks--;
+        if (hurtTicks > 0) hurtTicks--;
         if (!activePlayer || isDead()) return;
         handleInputs(keyMap, mousePos, tileMap);
         if (velocity.lengthSquared() < MINIMUM_VELOCITY) {
@@ -113,11 +127,23 @@ public class Player {
     }
 
     public void hurt(int amount) {
-        hp-= amount;
+        hp -= amount;
         hurtTicks = 10;
     }
 
-    public boolean isDead(){
+    public boolean isDead() {
         return hp < 1;
+    }
+
+    public double getHpFraction() {
+        return ((double) hp) / START_HP;
+    }
+
+    public double getShootDelayFraction() {
+        return ((double) shootDelay) / SHOOT_DELAY;
+    }
+
+    public double getStaminaFraction() {
+        return ((double) stamina) / MAX_STAMINA;
     }
 }

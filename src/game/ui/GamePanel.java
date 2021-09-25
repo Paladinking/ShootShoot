@@ -1,12 +1,10 @@
 package game.ui;
 
 import game.Game;
-import game.client.GameClient;
 
 import javax.swing.*;
 import java.awt.*;
 import java.io.IOException;
-import java.net.Socket;
 
 public class GamePanel extends JPanel {
 
@@ -19,7 +17,7 @@ public class GamePanel extends JPanel {
     @Override
     public void paintComponent(Graphics g){
         super.paintComponent(g);
-        game.draw((Graphics2D) g, getSize());
+        game.draw((Graphics2D) g);
     }
 
     public void addListeners() {

@@ -24,7 +24,7 @@ import java.util.Timer;
 
 public class Game implements KeyListener, MouseMotionListener, PlayerListener, BulletListener {
 
-    public static final int WIDTH = 96, HEIGHT = 54, TILE_SIZE = 20;
+    public static final int WIDTH = 96, HEIGHT = 50, TILE_SIZE = 20;
 
     private static final int INITIAL_EVENT_CAPACITY = 32;
 
@@ -70,6 +70,7 @@ public class Game implements KeyListener, MouseMotionListener, PlayerListener, B
         keyMap.put(KeyEvent.VK_S, false);
         keyMap.put(KeyEvent.VK_D, false);
         keyMap.put(KeyEvent.VK_SPACE, false);
+        keyMap.put(KeyEvent.VK_SHIFT, false);
     }
 
     public void init() {
@@ -157,10 +158,29 @@ public class Game implements KeyListener, MouseMotionListener, PlayerListener, B
     public void draw(Graphics2D g) {
         g.scale(scalingFactor, scalingFactor);
         tileMap.draw(g);
+        double hpFraction, staminaFraction, shootDelayFraction;
         synchronized (this) {
             for (Player player : players) if (!player.isDead()) player.draw(g);
             for (Bullet bullet : bullets.values()) bullet.draw(g);
+            Player player = players.get(playerNumber);
+            hpFraction = player.getHpFraction();
+            staminaFraction = player.getStaminaFraction();
+            shootDelayFraction = player.getShootDelayFraction();
         }
+        g.setColor(Color.RED);
+        g.fillRect(10, TILE_SIZE * height + 10, 200, 20);
+        g.setColor(Color.GREEN);
+        g.fillRect(10, TILE_SIZE * height + 10, (int) (hpFraction * 200), 20);
+
+        g.setColor(Color.BLACK);
+        g.fillRect(250, TILE_SIZE * height + 10, 200, 20);
+        g.setColor(Color.BLUE);
+        g.fillRect(250, TILE_SIZE * height + 10, (int) (staminaFraction * 200), 20);
+
+        g.setColor(Color.BLACK);
+        g.fillRect(480, TILE_SIZE * height + 10, 200, 20);
+        g.setColor(Color.ORANGE);
+        g.fillRect(480, TILE_SIZE * height + 10, (int) (shootDelayFraction * 200), 20);
     }
 
 

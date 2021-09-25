@@ -34,7 +34,6 @@ public class Bullet {
 
     public void draw(Graphics2D g){
         g.setColor(Color.ORANGE);
-        //g.fillOval((int)position.x - 10, (int)position.y - 10, 20, 20);
         g.setStroke(new BasicStroke(6));
         for (int i = 0; i < pointsToDraw.size()-1; i++) {
             g.drawLine(pointsToDraw.get(i).x, pointsToDraw.get(i).y, pointsToDraw.get(i+1).x, pointsToDraw.get(i+1).y);
