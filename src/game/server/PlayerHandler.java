@@ -74,11 +74,11 @@ public class PlayerHandler {
 
     public void sendInitialData(int players, int[] startingPositions) throws IOException {
         out.writeInt(players);
+        out.writeInt(number);
         for (int i = 0; i < players; i++) {
             out.writeInt(startingPositions[2 * i]);
             out.writeInt(startingPositions[2 * i + 1]);
         }
-        out.writeInt(number);
         out.flush();
     }
 

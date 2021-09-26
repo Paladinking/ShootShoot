@@ -1,10 +1,14 @@
 package game;
 
 import game.client.GameClient;
-import game.entities.Bullet;
 import game.entities.Player;
+import game.entities.projectiles.Bullet;
+import game.entities.LocalPlayer;
+import game.entities.projectiles.Projectile;
+import game.entities.projectiles.Rocket;
 import game.events.GameEvent;
-import game.listeners.BulletListener;
+import game.items.weaponds.Weapon;
+import game.listeners.ProjectileListener;
 import game.listeners.PlayerListener;
 import game.tiles.TileMap;
 
@@ -22,7 +26,7 @@ import java.util.*;
 import java.util.List;
 import java.util.Timer;
 
-public class Game implements KeyListener, MouseMotionListener, PlayerListener, BulletListener {
+public class Game implements KeyListener, MouseMotionListener, PlayerListener, ProjectileListener {
 
     public static final int WIDTH = 96, HEIGHT = 50, TILE_SIZE = 20;
 
@@ -38,11 +42,13 @@ public class Game implements KeyListener, MouseMotionListener, PlayerListener, B
 
     private GameClient client;
 
-    private final Map<Integer, Bullet> bullets;
+    private final Map<Integer, Projectile> projectiles;
 
     private TileMap tileMap;
 
     private final List<Player> players;
+
+    private LocalPlayer localPlayer;
 
     private int playerNumber;
 
@@ -58,7 +64,7 @@ public class Game implements KeyListener, MouseMotionListener, PlayerListener, B
         this.scalingFactor = pixelWidth / ((double) width * TILE_SIZE);
         this.keyMap = new HashMap<>();
         this.mousePos = new Point(0, 0);
-        this.bullets = new HashMap<>();
+        this.projectiles = new HashMap<>();
         this.players = new ArrayList<>();
         this.events = new ArrayDeque<>(INITIAL_EVENT_CAPACITY);
     }
@@ -105,18 +111,25 @@ public class Game implements KeyListener, MouseMotionListener, PlayerListener, B
 
     private void receiveInitialData() throws IOException {
         int numberOfPlayers = client.readInt();
+        playerNumber = client.readInt();
         final Color[] colors = new Color[]{Color.RED, Color.GREEN, Color.BLUE, Color.BLACK};
         for (int i = 0; i < numberOfPlayers; i++) {
             int x = client.readInt(), y = client.readInt();
-            Player player = new Player(x, y, TILE_SIZE * 2, colors[i], this);
+            Player player;
+            if (i == playerNumber){
+                localPlayer = new LocalPlayer(x, y, TILE_SIZE * 2, colors[i], this);
+                player = localPlayer;
+            } else {
+                player = new Player(x,y, TILE_SIZE * 2, colors[i]);
+            }
             players.add(player);
         }
-        playerNumber = client.readInt();
     }
 
     @Override
-    public void playerFiredShot(Vector2d pos, Vector2d velocity) {
-        events.add(new GameEvent.BulletCreated(pos.x, pos.y, velocity.x, velocity.y));
+    public void playerUsedWeapon(Weapon weapon, LocalPlayer player) {
+        Vector2d pos = player.getPosition();
+        weapon.use(events,tileMap, pos, mousePos);
     }
 
     @Override
@@ -125,25 +138,24 @@ public class Game implements KeyListener, MouseMotionListener, PlayerListener, B
     }
 
     @Override
-    public void shotPlayer(Player player) {
+    public void hitPlayer(LocalPlayer player) {
         player.hurt(1);
         damageTaken++;
     }
 
     public synchronized void tick() {
         damageTaken = 0;
-        Player player = players.get(playerNumber);
         for (Player p : players) {
-            p.tick(tileMap, keyMap, mousePos, p == player);
+            p.tick(tileMap, keyMap);
         }
-        Iterator<Map.Entry<Integer, Bullet>> it = bullets.entrySet().iterator();
+        Iterator<Map.Entry<Integer, Projectile>> it = projectiles.entrySet().iterator();
         while (it.hasNext()) {
-            Map.Entry<Integer, Bullet> entry = it.next();
-            Bullet bullet = entry.getValue();
-            bullet.tick(tileMap, player);
-            if (bullet.isDead()) {
+            Map.Entry<Integer, Projectile> entry = it.next();
+            Projectile projectile = entry.getValue();
+            projectile.tick(tileMap, localPlayer);
+            if (projectile.isDead()) {
                 it.remove();
-                events.add(new GameEvent.BulletRemoved(entry.getKey()));
+                events.add(new GameEvent.ProjectileRemoved(entry.getKey()));
             }
         }
         if (damageTaken > 0) events.add(new GameEvent.PlayerHurt(damageTaken));
@@ -161,11 +173,10 @@ public class Game implements KeyListener, MouseMotionListener, PlayerListener, B
         double hpFraction, staminaFraction, shootDelayFraction;
         synchronized (this) {
             for (Player player : players) if (!player.isDead()) player.draw(g);
-            for (Bullet bullet : bullets.values()) bullet.draw(g);
-            Player player = players.get(playerNumber);
-            hpFraction = player.getHpFraction();
-            staminaFraction = player.getStaminaFraction();
-            shootDelayFraction = player.getShootDelayFraction();
+            for (Projectile projectile : projectiles.values()) projectile.draw(g);
+            hpFraction = localPlayer.getHpFraction();
+            staminaFraction = localPlayer.getStaminaFraction();
+            shootDelayFraction = localPlayer.getShootDelayFraction();
         }
         g.setColor(Color.RED);
         g.fillRect(10, TILE_SIZE * height + 10, 200, 20);
@@ -205,18 +216,20 @@ public class Game implements KeyListener, MouseMotionListener, PlayerListener, B
     @Override
     public void mouseDragged(MouseEvent e) {
         mousePos.setLocation(e.getX(), e.getY());
+        mousePos.x /= scalingFactor;
+        mousePos.y /= scalingFactor;
     }
 
     @Override
     public void mouseMoved(MouseEvent e) {
         mousePos.setLocation(e.getX(), e.getY());
-        mousePos.x *= scalingFactor;
-        mousePos.y *= scalingFactor;
+        mousePos.x /= scalingFactor;
+        mousePos.y /= scalingFactor;
     }
 
 
     /*
-     * These methods are running on a different thread than the rest of the program.
+     * These methods are running on a different thread than the rest of the file.
      *
      */
 
@@ -241,16 +254,24 @@ public class Game implements KeyListener, MouseMotionListener, PlayerListener, B
         }
     }
 
-    public void createBullet(double xPos, double yPos, double xVel, double yVel, int index) {
+    public void createProjectile(double x, double y, double dx, double dy, int type, int index) {
+        Projectile projectile;
+        if (Projectile.isBullet(type)){
+            projectile = new Bullet(x, y, dx, dy, type, this);
+        } else if (Projectile.isRocket(type)) {
+            projectile = new Rocket(x, y, dx, dy);
+        } else {
+            projectile = new Bullet(x, y, dx, dy, 0, this);
+        }
         synchronized (this) {
-            bullets.put(index, new Bullet(new Vector2d(xPos, yPos), new Vector2d(xVel, yVel), this));
+            projectiles.put(index, projectile);
         }
     }
 
-    public void removeBullet(int index, int source) {
+    public void removeProjectile(int index, int source) {
         if (source == playerNumber) return;
         synchronized (this) {
-            bullets.remove(index);
+            projectiles.remove(index);
         }
     }
 

@@ -1,35 +1,35 @@
-package game.entities;
+package game.entities.projectiles;
 
+import game.entities.LocalPlayer;
+import game.entities.Player;
 import game.tiles.TileMap;
-import game.listeners.BulletListener;
+import game.listeners.ProjectileListener;
 
 import javax.vecmath.Vector2d;
 import java.awt.*;
 import java.util.ArrayList;
 import java.util.List;
 
-public class Bullet {
+public class Bullet extends Projectile {
 
     public static final int BULLET_SPEED = 100;
-    private final static int BOUNCES = 5;
 
     private int remainingBounces;
-    private final Vector2d position, velocity;
+
     private final List<Point> pointsToDraw;
 
-    private final BulletListener listener;
+    private final ProjectileListener listener;
 
-    public Bullet(Vector2d position, Vector2d velocity, BulletListener listener) {
-        this.position = position;
-        this.velocity = velocity;
-        this.remainingBounces = BOUNCES;
+    public Bullet(Vector2d position, Vector2d velocity, int bounces, ProjectileListener listener) {
+        super(position, velocity);
+        this.remainingBounces = bounces;
         this.pointsToDraw = new ArrayList<>();
         pointsToDraw.add(new Point((int) position.x, (int)position.y));
         this.listener = listener;
     }
 
-    public Bullet(double shotX, double shotY, double shotDx, double shotDy, BulletListener listener) {
-        this(new Vector2d(shotX, shotY), new Vector2d(shotDx, shotDy), listener);
+    public Bullet(double shotX, double shotY, double shotDx, double shotDy, int bounces, ProjectileListener listener) {
+        this(new Vector2d(shotX, shotY), new Vector2d(shotDx, shotDy), bounces, listener);
     }
 
     public void draw(Graphics2D g){
@@ -40,7 +40,7 @@ public class Bullet {
         }
     }
 
-    public void tick(TileMap tileMap, Player player) {
+    public void tick(TileMap tileMap, LocalPlayer player) {
         pointsToDraw.remove(pointsToDraw.size() - 1);
         pointsToDraw.add(new Point((int)position.x, (int)position.y));
         final int tileSize = tileMap.getTileSize();
@@ -83,7 +83,7 @@ public class Bullet {
         position.set(step);
         if (bounced) remainingBounces--;
         if (hitPlayer){
-            listener.shotPlayer(player);
+            listener.hitPlayer(player);
             remainingBounces = -1;
         }
         pointsToDraw.add(new Point((int) position.x, (int)position.y));

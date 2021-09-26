@@ -11,22 +11,23 @@ public abstract class GameEvent {
 
     private static final byte TOTAL_EVENTS = 4;
 
-    private static final byte BULLET_CREATED = 0, BULLET_REMOVED = 1, PLAYER_HURT = 2, PLAYER_MOVED = 3;
+    private static final byte PROJECTILE_CREATED = 0, PROJECTILE_REMOVED = 1, PLAYER_HURT = 2, PLAYER_MOVED = 3;
 
     private static final EventReader[] readers = new EventReader[TOTAL_EVENTS];
 
     static {
-        readers[BULLET_CREATED] = in -> {
+        readers[PROJECTILE_CREATED] = in -> {
             double x = in.readDouble();
             double y = in.readDouble();
             double dx = in.readDouble();
             double dy = in.readDouble();
+            int type = in.readInt();
             int index = in.readInt();
-            return new BulletCreated(x, y, dx, dy, index);
+            return new ProjectileCreated(x, y, dx, dy, type, index);
         };
-        readers[BULLET_REMOVED] = in -> {
+        readers[PROJECTILE_REMOVED] = in -> {
             int index = in.readInt();
-            return new BulletRemoved(index);
+            return new ProjectileRemoved(index);
         };
         readers[PLAYER_HURT] = in -> {
             int amount = in.readInt();
@@ -57,37 +58,40 @@ public abstract class GameEvent {
         GameEvent read(DataInputStream in) throws IOException;
     }
 
-    public static class BulletCreated extends GameEvent {
+    public static class ProjectileCreated extends GameEvent {
         private final double xPos, yPos, xVel, yVel;
+        private final int type;
 
         private int index;
 
-        public BulletCreated(double xPos, double yPos, double xVel, double yVel) {
+        public ProjectileCreated(double xPos, double yPos, double xVel, double yVel, int type) {
             this.xPos = xPos;
             this.yPos = yPos;
             this.xVel = xVel;
             this.yVel = yVel;
+            this.type = type;
             this.index = -1;
         }
 
-        public BulletCreated(double x, double y, double dx, double dy, int index) {
-            this(x, y, dx, dy);
+        public ProjectileCreated(double x, double y, double dx, double dy, int type, int index) {
+            this(x, y, dx, dy, type);
             this.index = index;
         }
 
         @Override
         public void write(DataOutputStream out) throws IOException {
-            out.write(BULLET_CREATED);
+            out.write(PROJECTILE_CREATED);
             out.writeDouble(xPos);
             out.writeDouble(yPos);
             out.writeDouble(xVel);
             out.writeDouble(yVel);
+            out.writeInt(type);
             out.writeInt(index);
         }
 
         @Override
         public void execute(Game game, int source) {
-            game.createBullet(xPos, yPos, xVel, yVel, index);
+            game.createProjectile(xPos, yPos, xVel, yVel, type, index);
         }
 
         @Override
@@ -99,23 +103,23 @@ public abstract class GameEvent {
 
     }
 
-    public static class BulletRemoved extends GameEvent {
+    public static class ProjectileRemoved extends GameEvent {
 
         private final int index;
 
-        public BulletRemoved(int index){
+        public ProjectileRemoved(int index){
             this.index = index;
         }
 
         @Override
         public void write(DataOutputStream out) throws IOException {
-            out.write(BULLET_REMOVED);
+            out.write(PROJECTILE_REMOVED);
             out.writeInt(index);
         }
 
         @Override
         public void execute(Game game, int source) {
-            game.removeBullet(index, source);
+            game.removeProjectile(index, source);
         }
     }
 
