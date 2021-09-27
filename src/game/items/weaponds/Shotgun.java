@@ -10,7 +10,9 @@ import java.util.Collection;
 
 public class Shotgun extends Weapon {
 
-    private final static double SHOT_ANGLE = Math.PI / 90;
+    private static final int BOUNCES  = 1;
+
+    private static final double SHOT_ANGLE = Math.PI / 90;
 
     private final int numberOfShots;
 
@@ -33,7 +35,7 @@ public class Shotgun extends Weapon {
             Vector2d bulletVel = new Vector2d(bulletVector);
             //noinspection IntegerDivisionInFloatingPointContext
             rotate(bulletVel, (i - (numberOfShots / 2)) * SHOT_ANGLE);
-            createProjectile(events, tileMap, source, bulletVel, Projectile.getBullet(1));
+            createProjectile(events, tileMap, source, bulletVel, Projectile.getBullet(BOUNCES));
         }
         setDelay();
     }

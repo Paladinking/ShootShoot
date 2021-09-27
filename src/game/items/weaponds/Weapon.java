@@ -1,6 +1,5 @@
 package game.items.weaponds;
 
-import game.entities.projectiles.Projectile;
 import game.events.GameEvent;
 import game.tiles.TileMap;
 

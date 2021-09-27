@@ -1,6 +1,7 @@
 package game.entities.projectiles;
 
 import game.entities.LocalPlayer;
+import game.textures.Texture;
 import game.tiles.TileMap;
 
 import javax.vecmath.Vector2d;
@@ -23,7 +24,7 @@ public class Rocket extends Projectile {
     }
 
     @Override
-    public void draw(Graphics2D g) {
-
+    public Texture getTexture() {
+        return null;
     }
 }

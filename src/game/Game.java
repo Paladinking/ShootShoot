@@ -10,6 +10,7 @@ import game.events.GameEvent;
 import game.items.weaponds.Weapon;
 import game.listeners.ProjectileListener;
 import game.listeners.PlayerListener;
+import game.textures.Texture;
 import game.tiles.TileMap;
 
 import javax.imageio.ImageIO;
@@ -44,6 +45,8 @@ public class Game implements KeyListener, MouseMotionListener, PlayerListener, P
 
     private final Map<Integer, Projectile> projectiles;
 
+    private final List<Texture> textures;
+
     private TileMap tileMap;
 
     private final List<Player> players;
@@ -66,6 +69,7 @@ public class Game implements KeyListener, MouseMotionListener, PlayerListener, P
         this.mousePos = new Point(0, 0);
         this.projectiles = new HashMap<>();
         this.players = new ArrayList<>();
+        this.textures = new ArrayList<>();
         this.events = new ArrayDeque<>(INITIAL_EVENT_CAPACITY);
     }
 
@@ -77,6 +81,8 @@ public class Game implements KeyListener, MouseMotionListener, PlayerListener, P
         keyMap.put(KeyEvent.VK_D, false);
         keyMap.put(KeyEvent.VK_SPACE, false);
         keyMap.put(KeyEvent.VK_SHIFT, false);
+        keyMap.put(KeyEvent.VK_1, false);
+        keyMap.put(KeyEvent.VK_2, false);
     }
 
     public void init() {
@@ -87,7 +93,7 @@ public class Game implements KeyListener, MouseMotionListener, PlayerListener, P
 
     private BufferedImage getLevelImage() {
         try {
-            return ImageIO.read(ClassLoader.getSystemResource("images/stage.png"));
+            return ImageIO.read(ClassLoader.getSystemResource("images/stage2.png"));
         } catch (IOException e) {
             return new BufferedImage(20, 20, BufferedImage.TYPE_INT_ARGB);
         }
@@ -123,6 +129,7 @@ public class Game implements KeyListener, MouseMotionListener, PlayerListener, P
                 player = new Player(x,y, TILE_SIZE * 2, colors[i]);
             }
             players.add(player);
+            textures.add(player.getTexture());
         }
     }
 
@@ -158,6 +165,13 @@ public class Game implements KeyListener, MouseMotionListener, PlayerListener, P
                 events.add(new GameEvent.ProjectileRemoved(entry.getKey()));
             }
         }
+        for (int i = 0; i < textures.size(); i++){
+            Texture texture = textures.get(i);
+            if (texture.tick()) {
+                textures.remove(i);
+                i--;
+            }
+        }
         if (damageTaken > 0) events.add(new GameEvent.PlayerHurt(damageTaken));
         try {
             client.sendData(events);
@@ -172,8 +186,7 @@ public class Game implements KeyListener, MouseMotionListener, PlayerListener, P
         tileMap.draw(g);
         double hpFraction, staminaFraction, shootDelayFraction;
         synchronized (this) {
-            for (Player player : players) if (!player.isDead()) player.draw(g);
-            for (Projectile projectile : projectiles.values()) projectile.draw(g);
+            for (Texture texture : textures) texture.draw(g);
             hpFraction = localPlayer.getHpFraction();
             staminaFraction = localPlayer.getStaminaFraction();
             shootDelayFraction = localPlayer.getShootDelayFraction();
@@ -265,6 +278,7 @@ public class Game implements KeyListener, MouseMotionListener, PlayerListener, P
         }
         synchronized (this) {
             projectiles.put(index, projectile);
+            textures.add(projectile.getTexture());
         }
     }
 

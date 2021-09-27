@@ -16,7 +16,7 @@ public class Server {
 
     private boolean ready = false;
 
-    private static final int PLAYERS = 2;
+    private static final int PLAYERS = 1;
 
     private final int[] startingPositions = new int[]{100, 100, 1820, 100, 100, 980, 1820, 980};
 

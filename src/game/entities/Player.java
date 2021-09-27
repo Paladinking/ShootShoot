@@ -1,5 +1,7 @@
 package game.entities;
 
+import game.textures.PlayerTexture;
+import game.textures.Texture;
 import game.tiles.TileMap;
 
 import javax.vecmath.Vector2d;
@@ -17,27 +19,30 @@ public class Player {
 
     protected final int radius;
 
-    private final Color color;
+    private final PlayerTexture texture;
 
     public Player(int x, int y, int diameter, Color color){
-        this.color = color;
+        this.texture = new PlayerTexture(this, color);
         this.radius = diameter / 2;
         this.position = new Vector2d(x, y);
         this.hp = START_HP;
     }
 
     public void tick(TileMap tileMap, Map<Integer, Boolean> keyMap){
-        if (hurtTicks > 0) hurtTicks--;
+        if (hurtTicks > 0) {
+            hurtTicks--;
+            if (hurtTicks == 0) texture.setState(PlayerTexture.State.NORMAL);
+        }
     }
 
-    public void draw(Graphics2D g) {
-        g.setColor(hurtTicks > 0 ? Color.orange : color);
-        g.fillOval((int) position.x - radius, (int) position.y - radius, radius * 2, radius * 2);
+    public Texture getTexture(){
+        return texture;
     }
 
     public void hurt(int amount) {
-        hp -= amount;
+        hp = Math.max(0, hp - amount);
         hurtTicks = 10;
+        texture.setState(PlayerTexture.State.HURT);
     }
 
     public boolean isDead() {
@@ -46,5 +51,13 @@ public class Player {
 
     public void setPosition(double newX, double newY){
         this.position.set(newX, newY);
+    }
+
+    public int getRadius() {
+        return radius;
+    }
+
+    public Vector2d getPosition() {
+        return position;
     }
 }

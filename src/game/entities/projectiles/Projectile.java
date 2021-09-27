@@ -1,10 +1,10 @@
 package game.entities.projectiles;
 
 import game.entities.LocalPlayer;
+import game.textures.Texture;
 import game.tiles.TileMap;
 
 import javax.vecmath.Vector2d;
-import java.awt.*;
 
 public abstract class Projectile {
 
@@ -33,5 +33,5 @@ public abstract class Projectile {
 
     public abstract boolean isDead();
 
-    public abstract void draw(Graphics2D g);
+    public abstract Texture getTexture();
 }

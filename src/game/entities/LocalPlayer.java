@@ -1,6 +1,5 @@
 package game.entities;
 
-import game.entities.projectiles.Bullet;
 import game.items.weaponds.Shotgun;
 import game.items.weaponds.Sniper;
 import game.items.weaponds.Weapon;
@@ -14,10 +13,12 @@ import java.util.Map;
 
 public class LocalPlayer extends Player {
 
-    private static final int SPEED = 3, SHOOT_DELAY = 100, MAX_STAMINA = 100;
+    private static final int SPEED = 3, SHOOT_DELAY = 100, MAX_STAMINA = 100, BULLET_SPEED = 100, SHOTGUN_SHOTS = 5;
 
     private static final double FRICTION = 0.7, MINIMUM_VELOCITY = 0.05, SPRINT_FACTOR = 2.0;
     private final Vector2d velocity;
+
+    private final Weapon[] weapons;
 
     private Weapon activeWeapon;
 
@@ -31,8 +32,11 @@ public class LocalPlayer extends Player {
         super(x, y, diameter, color);
         this.velocity = new Vector2d(0, 0);
         this.listener = listener;
-        this.activeWeapon = new Sniper(SHOOT_DELAY, radius, Bullet.BULLET_SPEED);
-        this.activeWeapon = new Shotgun(SHOOT_DELAY, radius, Bullet.BULLET_SPEED / 2, 3);
+        this.weapons = new Weapon[]{
+                new Sniper(SHOOT_DELAY, radius, BULLET_SPEED),
+                new Shotgun(SHOOT_DELAY, radius, BULLET_SPEED / 3, SHOTGUN_SHOTS)
+        };
+        this.activeWeapon = weapons[0];
     }
 
     private void handleInputs(Map<Integer, Boolean> keyMap) {
@@ -58,9 +62,14 @@ public class LocalPlayer extends Player {
         velocity.add(acceleration);
         velocity.scale(FRICTION);
 
+        if (keyMap.get(KeyEvent.VK_1)) activeWeapon = weapons[0];
+        if (keyMap.get(KeyEvent.VK_2)) activeWeapon = weapons[1];
+
         if (keyMap.get(KeyEvent.VK_SPACE) && activeWeapon.isReady()) {
             listener.playerUsedWeapon(activeWeapon, this);
         }
+
+
     }
 
     public void tick(TileMap tileMap, Map<Integer, Boolean> keyMap) {
