@@ -1,29 +1,27 @@
 package game.entities.projectiles;
 
 import game.entities.LocalPlayer;
-import game.entities.Player;
 import game.tiles.TileMap;
 import game.listeners.ProjectileListener;
 
 import javax.vecmath.Vector2d;
 import java.awt.*;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 public class Bullet extends Projectile {
 
-    public static final int BULLET_SPEED = 100;
+    public static final int BULLET_SPEED = 100, DRAW_POINTS = 6;
 
     private int remainingBounces;
 
-    private final List<Point> pointsToDraw;
+    private final Queue<Point> pointsToDraw;
 
     private final ProjectileListener listener;
 
     public Bullet(Vector2d position, Vector2d velocity, int bounces, ProjectileListener listener) {
         super(position, velocity);
         this.remainingBounces = bounces;
-        this.pointsToDraw = new ArrayList<>();
+        this.pointsToDraw = new ArrayDeque<>();
         pointsToDraw.add(new Point((int) position.x, (int)position.y));
         this.listener = listener;
     }
@@ -32,17 +30,20 @@ public class Bullet extends Projectile {
         this(new Vector2d(shotX, shotY), new Vector2d(shotDx, shotDy), bounces, listener);
     }
 
-    public void draw(Graphics2D g){
+    public void draw(Graphics2D g) {
+        if (pointsToDraw.isEmpty()) return;
         g.setColor(Color.ORANGE);
         g.setStroke(new BasicStroke(6));
-        for (int i = 0; i < pointsToDraw.size()-1; i++) {
-            g.drawLine(pointsToDraw.get(i).x, pointsToDraw.get(i).y, pointsToDraw.get(i+1).x, pointsToDraw.get(i+1).y);
+        Iterator<Point> it = pointsToDraw.iterator();
+        Point p1, p2 = it.next();
+        while (it.hasNext()) {
+            p1 = p2;
+            p2 = it.next();
+            g.drawLine(p1.x, p1.y, p2.x, p2.y);
         }
     }
 
     public void tick(TileMap tileMap, LocalPlayer player) {
-        pointsToDraw.remove(pointsToDraw.size() - 1);
-        pointsToDraw.add(new Point((int)position.x, (int)position.y));
         final int tileSize = tileMap.getTileSize();
         Vector2d normalVel = new Vector2d(velocity);
         normalVel.normalize();
@@ -87,17 +88,12 @@ public class Bullet extends Projectile {
             remainingBounces = -1;
         }
         pointsToDraw.add(new Point((int) position.x, (int)position.y));
-        if (pointsToDraw.size()>10) {
-            pointsToDraw.remove(0);
+        if (pointsToDraw.size() > DRAW_POINTS) {
+            pointsToDraw.remove();
         }
     }
 
     public boolean isDead() {
         return remainingBounces < 0;
     }
-
-    public Vector2d getPosition() {
-        return position;
-    }
-
 }
