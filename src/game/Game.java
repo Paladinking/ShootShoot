@@ -8,6 +8,7 @@ import game.entities.projectiles.Projectile;
 import game.entities.projectiles.Rocket;
 import game.events.GameEvent;
 import game.items.weaponds.Weapon;
+import game.listeners.GameEventHandler;
 import game.listeners.ProjectileListener;
 import game.listeners.PlayerListener;
 import game.textures.Texture;
@@ -27,13 +28,21 @@ import java.util.*;
 import java.util.List;
 import java.util.Timer;
 
-public class Game implements KeyListener, MouseMotionListener, PlayerListener, ProjectileListener {
+public class Game implements KeyListener, MouseMotionListener, PlayerListener, ProjectileListener, GameEventHandler {
 
     public static final int WIDTH = 96, HEIGHT = 50, TILE_SIZE = 20;
 
     private static final int INITIAL_EVENT_CAPACITY = 32;
 
     private final int width, height;
+
+    private volatile boolean receivingData;
+
+    private boolean running;
+
+    private final Object lock = new Object();
+
+    private Thread readerThread;
 
     private final double scalingFactor;
 
@@ -56,8 +65,6 @@ public class Game implements KeyListener, MouseMotionListener, PlayerListener, P
     private int playerNumber;
 
     private final Point mousePos;
-
-    private byte damageTaken;
 
     private final Queue<GameEvent> events;
 
@@ -103,7 +110,10 @@ public class Game implements KeyListener, MouseMotionListener, PlayerListener, P
         this.client = new GameClient(ip, port);
         client.connect();
         receiveInitialData();
-        new Thread(this::receiveData).start();
+        running = true;
+        receivingData = true;
+        readerThread = new Thread(this::receiveData);
+        readerThread.start();
         timer = new Timer();
         timer.scheduleAtFixedRate(new TimerTask() {
             @Override
@@ -115,6 +125,20 @@ public class Game implements KeyListener, MouseMotionListener, PlayerListener, P
     }
 
 
+    public void restart() {
+        timer.cancel();
+        receivingData = false;
+        running = false;
+        while (readerThread.isAlive()) {
+            try {
+                readerThread.join();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+
     private void receiveInitialData() throws IOException {
         int numberOfPlayers = client.readInt();
         playerNumber = client.readInt();
@@ -122,11 +146,11 @@ public class Game implements KeyListener, MouseMotionListener, PlayerListener, P
         for (int i = 0; i < numberOfPlayers; i++) {
             int x = client.readInt(), y = client.readInt();
             Player player;
-            if (i == playerNumber){
+            if (i == playerNumber) {
                 localPlayer = new LocalPlayer(x, y, TILE_SIZE * 2, colors[i], this);
                 player = localPlayer;
             } else {
-                player = new Player(x,y, TILE_SIZE * 2, colors[i]);
+                player = new Player(x, y, TILE_SIZE * 2, colors[i]);
             }
             players.add(player);
             textures.add(player.getTexture());
@@ -136,48 +160,60 @@ public class Game implements KeyListener, MouseMotionListener, PlayerListener, P
     @Override
     public void playerUsedWeapon(Weapon weapon, LocalPlayer player) {
         Vector2d pos = player.getPosition();
-        weapon.use(events,tileMap, pos, mousePos);
+        weapon.use(client, tileMap, pos, mousePos);
     }
 
     @Override
-    public void playerMoved(Vector2d pos){
-        events.add(new GameEvent.PlayerMoved(pos.x, pos.y));
+    public void playerMoved(Vector2d pos) {
+        client.addEvent(new GameEvent.PlayerMoved(pos.x, pos.y));
     }
 
     @Override
     public void hitPlayer(LocalPlayer player) {
         player.hurt(1);
-        damageTaken++;
     }
 
-    public synchronized void tick() {
-        damageTaken = 0;
-        for (Player p : players) {
-            p.tick(tileMap, keyMap);
-        }
-        Iterator<Map.Entry<Integer, Projectile>> it = projectiles.entrySet().iterator();
-        while (it.hasNext()) {
-            Map.Entry<Integer, Projectile> entry = it.next();
-            Projectile projectile = entry.getValue();
-            projectile.tick(tileMap, localPlayer);
-            if (projectile.isDead()) {
-                it.remove();
-                events.add(new GameEvent.ProjectileRemoved(entry.getKey()));
+    public void tick() {
+        synchronized (lock) {
+            while (!events.isEmpty()) {
+                GameEvent event = events.remove();
+                event.execute(this);
             }
-        }
-        for (int i = 0; i < textures.size(); i++){
-            Texture texture = textures.get(i);
-            if (texture.tick()) {
-                textures.remove(i);
-                i--;
+            if (running) {
+                for (Player p : players) {
+                    p.tick(tileMap, keyMap);
+                }
+                Iterator<Map.Entry<Integer, Projectile>> it = projectiles.entrySet().iterator();
+                while (it.hasNext()) {
+                    Map.Entry<Integer, Projectile> entry = it.next();
+                    Projectile projectile = entry.getValue();
+                    projectile.tick(tileMap, localPlayer);
+                    if (projectile.isDead()) {
+                        it.remove();
+                        client.addEvent(new GameEvent.ProjectileRemoved(entry.getKey()));
+                    }
+                }
+                for (int i = 0; i < textures.size(); i++) {
+                    Texture texture = textures.get(i);
+                    if (texture.tick()) {
+                        textures.remove(i);
+                        i--;
+                    }
+                }
+                int damageTaken = localPlayer.getDamageTaken();
+                if (damageTaken > 0) {
+                    client.addEvent(new GameEvent.PlayerHurt(damageTaken));
+                    if (localPlayer.isDead()) {
+                        client.addEvent(GameEvent.playerDied());
+                    }
+                }
             }
-        }
-        if (damageTaken > 0) events.add(new GameEvent.PlayerHurt(damageTaken));
-        try {
-            client.sendData(events);
-        } catch (IOException e) {
-            e.printStackTrace();
-            timer.cancel();
+            try {
+                client.sendData();
+            } catch (IOException e) {
+                e.printStackTrace();
+                timer.cancel();
+            }
         }
     }
 
@@ -185,7 +221,7 @@ public class Game implements KeyListener, MouseMotionListener, PlayerListener, P
         g.scale(scalingFactor, scalingFactor);
         tileMap.draw(g);
         double hpFraction, staminaFraction, shootDelayFraction;
-        synchronized (this) {
+        synchronized (lock) {
             for (Texture texture : textures) texture.draw(g);
             hpFraction = localPlayer.getHpFraction();
             staminaFraction = localPlayer.getStaminaFraction();
@@ -240,6 +276,42 @@ public class Game implements KeyListener, MouseMotionListener, PlayerListener, P
         mousePos.y /= scalingFactor;
     }
 
+    public void createProjectile(double x, double y, double dx, double dy, int type, int index) {
+        Projectile projectile;
+        if (Projectile.isBullet(type)) {
+            projectile = new Bullet(x, y, dx, dy, type, this);
+        } else if (Projectile.isRocket(type)) {
+            projectile = new Rocket(x, y, dx, dy);
+        } else {
+            projectile = new Bullet(x, y, dx, dy, 0, this);
+        }
+        projectiles.put(index, projectile);
+        textures.add(projectile.getTexture());
+
+    }
+
+    public void removeProjectile(int index, int source) {
+        if (source == playerNumber) return;
+        projectiles.remove(index);
+
+    }
+
+    public void hurtPlayer(int amount, int source) {
+        if (source == playerNumber) return;
+        players.get(source).hurt(amount);
+
+    }
+
+    public void movePlayer(double newX, double newY, int source) {
+        if (source == playerNumber) return;
+        players.get(source).setPosition(newX, newY);
+    }
+
+
+    public void addEvent(GameEvent event) {
+        events.add(event);
+    }
+
 
     /*
      * These methods are running on a different thread than the rest of the file.
@@ -249,60 +321,16 @@ public class Game implements KeyListener, MouseMotionListener, PlayerListener, P
 
     private void receiveData() {
         try {
-            while (true) {
-                GameEvent[][] events = new GameEvent[players.size()][];
-                client.receiveData(players.size(), events);
-                for (int i = 0; i < events.length; i++){
-                    executeEvents(i, events[i]);
-                }
+            while (receivingData) {
+                client.receiveData(players.size(), this);
             }
         } catch (IOException e) {
             e.printStackTrace();
+            timer.cancel();
         }
     }
 
-    private void executeEvents(int player, GameEvent[] events){
-        for (GameEvent event : events){
-            event.execute(this, player);
-        }
+    public void stopReaderThread() {
+        receivingData = false;
     }
-
-    public void createProjectile(double x, double y, double dx, double dy, int type, int index) {
-        Projectile projectile;
-        if (Projectile.isBullet(type)){
-            projectile = new Bullet(x, y, dx, dy, type, this);
-        } else if (Projectile.isRocket(type)) {
-            projectile = new Rocket(x, y, dx, dy);
-        } else {
-            projectile = new Bullet(x, y, dx, dy, 0, this);
-        }
-        synchronized (this) {
-            projectiles.put(index, projectile);
-            textures.add(projectile.getTexture());
-        }
-    }
-
-    public void removeProjectile(int index, int source) {
-        if (source == playerNumber) return;
-        synchronized (this) {
-            projectiles.remove(index);
-        }
-    }
-
-    public void hurtPlayer(int amount, int source){
-        if (source == playerNumber) return;
-        synchronized (this) {
-            players.get(source).hurt(amount);
-        }
-    }
-
-    public void movePlayer(double newX, double newY, int source){
-        if (source == playerNumber) return;
-        synchronized (this) {
-            players.get(source).setPosition(newX, newY);
-        }
-    }
-
-
-
 }

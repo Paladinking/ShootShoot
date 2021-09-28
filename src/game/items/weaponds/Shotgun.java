@@ -2,11 +2,11 @@ package game.items.weaponds;
 
 import game.entities.projectiles.Projectile;
 import game.events.GameEvent;
+import game.listeners.GameEventHandler;
 import game.tiles.TileMap;
 
 import javax.vecmath.Vector2d;
 import java.awt.*;
-import java.util.Collection;
 
 public class Shotgun extends Weapon {
 
@@ -28,14 +28,14 @@ public class Shotgun extends Weapon {
     }
 
     @Override
-    public void use(Collection<GameEvent> events, TileMap tileMap, Vector2d source, Point destination) {
+    public void use(GameEventHandler handler, TileMap tileMap, Vector2d source, Point destination) {
         Vector2d bulletVector = new Vector2d(destination.x - source.x, destination.y - source.y);
         bulletVector.normalize();
         for (int i = 0; i < numberOfShots; i++){
             Vector2d bulletVel = new Vector2d(bulletVector);
             //noinspection IntegerDivisionInFloatingPointContext
             rotate(bulletVel, (i - (numberOfShots / 2)) * SHOT_ANGLE);
-            createProjectile(events, tileMap, source, bulletVel, Projectile.getBullet(BOUNCES));
+            createProjectile(handler, tileMap, source, bulletVel, Projectile.getBullet(BOUNCES));
         }
         setDelay();
     }

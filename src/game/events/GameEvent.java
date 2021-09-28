@@ -9,9 +9,9 @@ import java.io.IOException;
 
 public abstract class GameEvent {
 
-    private static final byte TOTAL_EVENTS = 4;
+    private static final byte TOTAL_EVENTS = 6;
 
-    private static final byte PROJECTILE_CREATED = 0, PROJECTILE_REMOVED = 1, PLAYER_HURT = 2, PLAYER_MOVED = 3;
+    private static final byte PROJECTILE_CREATED = 0, PROJECTILE_REMOVED = 1, PLAYER_HURT = 2, PLAYER_MOVED = 3, PLAYER_DIED = 4, NEW_GAME_READY = 5;
 
     private static final EventReader[] readers = new EventReader[TOTAL_EVENTS];
 
@@ -38,6 +38,16 @@ public abstract class GameEvent {
             double y = in.readDouble();
             return new PlayerMoved(x, y);
         };
+        readers[PLAYER_DIED] = in -> playerDied();
+        readers[NEW_GAME_READY] = in -> newGameReady();
+    }
+
+    protected final int type;
+
+    public int source;
+
+    protected GameEvent(int type) {
+        this.type = type;
     }
 
     public abstract void write(DataOutputStream out) throws IOException;
@@ -48,13 +58,13 @@ public abstract class GameEvent {
         return readers[type].read(in);
     }
 
-    public abstract void execute(Game game, int source);
+    public abstract void execute(Game game);
 
     public void handle(PlayerHandler handler) {
 
     }
 
-    private interface EventReader {
+    protected interface EventReader {
         GameEvent read(DataInputStream in) throws IOException;
     }
 
@@ -65,6 +75,7 @@ public abstract class GameEvent {
         private int index;
 
         public ProjectileCreated(double xPos, double yPos, double xVel, double yVel, int type) {
+            super(PROJECTILE_CREATED);
             this.xPos = xPos;
             this.yPos = yPos;
             this.xVel = xVel;
@@ -90,7 +101,7 @@ public abstract class GameEvent {
         }
 
         @Override
-        public void execute(Game game, int source) {
+        public void execute(Game game) {
             game.createProjectile(xPos, yPos, xVel, yVel, type, index);
         }
 
@@ -108,6 +119,7 @@ public abstract class GameEvent {
         private final int index;
 
         public ProjectileRemoved(int index){
+            super(PROJECTILE_REMOVED);
             this.index = index;
         }
 
@@ -118,7 +130,7 @@ public abstract class GameEvent {
         }
 
         @Override
-        public void execute(Game game, int source) {
+        public void execute(Game game) {
             game.removeProjectile(index, source);
         }
     }
@@ -128,6 +140,7 @@ public abstract class GameEvent {
         private final int amount;
 
         public PlayerHurt(int amount) {
+            super(PLAYER_HURT);
             this.amount = amount;
         }
 
@@ -138,7 +151,7 @@ public abstract class GameEvent {
         }
 
         @Override
-        public void execute(Game game, int source) {
+        public void execute(Game game) {
             game.hurtPlayer(amount, source);
         }
     }
@@ -148,6 +161,7 @@ public abstract class GameEvent {
         private final double newX, newY;
 
         public PlayerMoved(double newX, double newY) {
+            super(PLAYER_MOVED);
             this.newX = newX;
             this.newY = newY;
         }
@@ -160,16 +174,38 @@ public abstract class GameEvent {
         }
 
         @Override
-        public void execute(Game game, int source) {
+        public void execute(Game game) {
             game.movePlayer(newX, newY, source);
+        }
+    }
+
+    private static class EmptyEvent extends GameEvent {
+
+        protected EmptyEvent(int type) {
+            super(type);
         }
 
         @Override
-        public String toString() {
-            return "PlayerMoved{" +
-                   "x=" + newX +
-                   ", y=" + newY +
-                   '}';
+        public void write(DataOutputStream out) throws IOException {
+            out.write(type);
         }
+
+        @Override
+        public void execute(Game game){
+
+        }
+    }
+
+    public static GameEvent playerDied() {
+        return new EmptyEvent(PLAYER_DIED){
+            @Override
+            public void handle(PlayerHandler handler){
+                handler.died();
+            }
+        };
+    }
+
+    public static GameEvent newGameReady(){
+        return new EmptyEvent(NEW_GAME_READY);
     }
 }

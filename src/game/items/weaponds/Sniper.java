@@ -2,6 +2,7 @@ package game.items.weaponds;
 
 import game.entities.projectiles.Projectile;
 import game.events.GameEvent;
+import game.listeners.GameEventHandler;
 import game.tiles.TileMap;
 
 import javax.vecmath.Vector2d;
@@ -17,10 +18,10 @@ public class Sniper extends Weapon {
     }
 
     @Override
-    public void use(Collection<GameEvent> events, TileMap tileMap, Vector2d source, Point destination) {
+    public void use(GameEventHandler handler, TileMap tileMap, Vector2d source, Point destination) {
         Vector2d bulletVector = new Vector2d(destination.x - source.x, destination.y - source.y);
         bulletVector.normalize();
-        createProjectile(events, tileMap, source, bulletVector, Projectile.getBullet(BOUNCES));
+        createProjectile(handler, tileMap, source, bulletVector, Projectile.getBullet(BOUNCES));
         setDelay();
     }
 }

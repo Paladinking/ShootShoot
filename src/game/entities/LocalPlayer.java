@@ -24,7 +24,7 @@ public class LocalPlayer extends Player {
 
     private boolean sprintEnded;
 
-    private int stamina;
+    private int stamina, damageTaken;
 
     private final PlayerListener listener;
 
@@ -75,6 +75,7 @@ public class LocalPlayer extends Player {
     public void tick(TileMap tileMap, Map<Integer, Boolean> keyMap) {
         super.tick(tileMap, keyMap);
         if (isDead()) return;
+        damageTaken = 0;
         activeWeapon.tick();
         handleInputs(keyMap);
         if (velocity.lengthSquared() < MINIMUM_VELOCITY) {
@@ -111,6 +112,12 @@ public class LocalPlayer extends Player {
         position.y = y;
     }
 
+    @Override
+    public void hurt(int amount){
+        super.hurt(amount);
+        damageTaken += amount;
+    }
+
 
     public Vector2d getPosition() {
         return position;
@@ -120,6 +127,9 @@ public class LocalPlayer extends Player {
         return Point.distanceSq(position.x, position.y, this.position.x, this.position.y) < radius * radius;
     }
 
+    public int getDamageTaken(){
+        return damageTaken;
+    }
 
     public double getHpFraction() {
         return ((double) hp) / Player.START_HP;

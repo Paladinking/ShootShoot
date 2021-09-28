@@ -1,10 +1,12 @@
 package game.server;
 
 import game.events.GameEvent;
+import game.events.ServerEvent;
 
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Queue;
@@ -12,45 +14,51 @@ import java.util.concurrent.locks.Lock;
 
 public class Server {
 
-    private final Object waiter;
+    private volatile boolean ready = false;
 
-    private boolean ready = false;
-
-    private static final int PLAYERS = 1;
+    private static final int PLAYERS = 2, TIMEOUT_MILLIS = 5000;
 
     private final int[] startingPositions = new int[]{100, 100, 1820, 100, 100, 980, 1820, 980};
 
-    List<PlayerHandler> playerHandlers = new ArrayList<>();
+    private final List<PlayerHandler> playerHandlers = new ArrayList<>();
+
+    private final Queue<GameEvent> serverEvents = new ArrayDeque<>();
+
+    private int livingPlayers;
+
+    private boolean restart = false;
 
     public Server() {
-        this.waiter = new Object();
     }
 
     public void open(int port) throws IOException {
         ServerSocket serverSocket = new ServerSocket(port);
         ready = true;
-        synchronized (waiter){
-            waiter.notify();
+        synchronized (this) {
+            notify();
         }
         while (playerHandlers.size() < PLAYERS) {
             Socket socket = serverSocket.accept();
-            playerHandlers.add(new PlayerHandler(socket, playerHandlers.size()));
+            socket.setTcpNoDelay(true);
+            socket.setSoTimeout(TIMEOUT_MILLIS);
+            playerHandlers.add(new PlayerHandler(socket, playerHandlers.size(), this));
             System.out.println(socket.getInetAddress() + " connected!");
         }
+        livingPlayers = playerHandlers.size();
         for (int i = 0; i < playerHandlers.size(); i++) {
             PlayerHandler handler = playerHandlers.get(i);
             handler.sendInitialData(PLAYERS, startingPositions);
-            new Thread(handler::start).start();
+            handler.start();
         }
         start();
 
     }
 
-    public void waitForReady(){
+    public void waitForReady() {
         while (!ready) {
-            synchronized (waiter) {
+            synchronized (this) {
                 try {
-                    waiter.wait();
+                    wait();
                 } catch (InterruptedException ignored) {
 
                 }
@@ -71,12 +79,13 @@ public class Server {
                     try {
                         Queue<GameEvent> events = playerHandlers.get(i).getEvents();
                         int totalEvents = events.size();
-                        for (PlayerHandler handler : playerHandlers){
+                        for (PlayerHandler handler : playerHandlers) {
                             handler.sendInt(totalEvents);
                         }
-                        for (int j = 0; j < totalEvents; j++){
+                        for (int j = 0; j < totalEvents; j++) {
                             GameEvent e = events.remove();
-                            for (PlayerHandler handler : playerHandlers) { ;
+                            for (PlayerHandler handler : playerHandlers) {
+                                ;
                                 handler.sendEvent(e);
                             }
                         }
@@ -84,8 +93,22 @@ public class Server {
                         lock.unlock();
                     }
                 }
-                for (PlayerHandler handler : playerHandlers){
-                    handler.flush();
+                synchronized (this) {
+                    for (PlayerHandler handler : playerHandlers) {
+                        handler.sendInt(serverEvents.size());
+                    }
+                    while (!serverEvents.isEmpty()) {
+                        for (GameEvent event : serverEvents) {
+                            for (PlayerHandler handler : playerHandlers) {
+                                handler.sendEvent(event);
+                            }
+                        }
+                    }
+                    if (restart) {
+                        for (PlayerHandler handler : playerHandlers) {
+                            handler.restart();
+                        }
+                    }
                 }
             } catch (IOException ioException) {
                 ioException.printStackTrace();
@@ -100,4 +123,17 @@ public class Server {
     }
 
 
+    public void playerDied() {
+        livingPlayers--;
+        if (livingPlayers == 0) {
+            synchronized (this) {
+                serverEvents.add(new ServerEvent.NewGame());
+                restart = true;
+            }
+        }
+    }
+
+    public void playerDisconnected(int number) {
+
+    }
 }

@@ -1,6 +1,7 @@
 package game.items.weaponds;
 
 import game.events.GameEvent;
+import game.listeners.GameEventHandler;
 import game.tiles.TileMap;
 
 import javax.vecmath.Vector2d;
@@ -21,17 +22,17 @@ public abstract class Weapon {
      }
 
 
-     protected void createProjectile(Collection<GameEvent> events, TileMap tileMap, Vector2d source, Vector2d projectileVector, int type){
+     protected void createProjectile(GameEventHandler handler, TileMap tileMap, Vector2d source, Vector2d projectileVector, int type){
           Vector2d bulletPos = new Vector2d(source);
           bulletPos.add(new Vector2d(projectileVector.x * (radius + 1), projectileVector.y * (radius + 1)));
           if (tileMap.isOpen(bulletPos)) {
                projectileVector.scale(projectileSpeed);
-               events.add(new GameEvent.ProjectileCreated(bulletPos.x, bulletPos.y, projectileVector.x, projectileVector.y, type));
+               handler.addEvent(new GameEvent.ProjectileCreated(bulletPos.x, bulletPos.y, projectileVector.x, projectileVector.y, type));
           }
      }
 
 
-     public abstract void use(Collection<GameEvent> events, TileMap tileMap, Vector2d source, Point destination);
+     public abstract void use(GameEventHandler handler, TileMap tileMap, Vector2d source, Point destination);
 
      protected void setDelay(){
           this.delay = maxDelay;

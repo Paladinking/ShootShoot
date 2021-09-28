@@ -4,6 +4,7 @@ import game.events.GameEvent;
 
 import java.io.*;
 import java.net.Socket;
+import java.net.SocketTimeoutException;
 import java.util.ArrayDeque;
 import java.util.Arrays;
 import java.util.Queue;
@@ -23,45 +24,60 @@ public class PlayerHandler {
 
     private final int number;
 
-    public PlayerHandler(Socket socket, int number) throws IOException {
+    private final Server server;
+
+    private volatile boolean running;
+
+    private Thread listenerThread;
+
+    public PlayerHandler(Socket socket, int number, Server server) throws IOException {
         this.in = new DataInputStream(socket.getInputStream());
         this.out = new DataOutputStream(socket.getOutputStream());
         this.events = new ArrayDeque<>();
         this.number = number;
+        this.server = server;
     }
 
-    public Lock getLock(){
+    public Lock getLock() {
         return queLock;
     }
 
     public void start() {
-        try {
-            while (true) {
-                readEvents();
-            }
-        } catch (IOException ioException) {
-            ioException.printStackTrace();
-        }
+        running = true;
+        listenerThread = new Thread(this::readEvents);
+        listenerThread.start();
     }
 
-    private void readEvents() throws IOException {
-        int totalEvents = in.readInt();
-            for (int i = 0; i < totalEvents; i++) {
-                GameEvent e = GameEvent.read(in);
-                if (e == null) {
-                    byte[] b = in.readAllBytes();
-                    System.out.println(Arrays.toString(b));
-                    return;
-                }
-                e.handle(this);
-                queLock.lock();
-                try {
-                    events.add(e);
-                } finally {
-                    queLock.unlock();
+    private void readEvents() {
+        try {
+            while (running) {
+                int totalEvents = in.readInt();
+                for (int i = 0; i < totalEvents; i++) {
+                    GameEvent e = GameEvent.read(in);
+                    if (e == null) {
+                        byte[] b = in.readAllBytes();
+                        System.out.println(Arrays.toString(b));
+                        return;
+                    }
+                    e.handle(this);
+                    queLock.lock();
+                    try {
+                        events.add(e);
+                    } finally {
+                        queLock.unlock();
+                    }
                 }
             }
-
+        } catch (SocketTimeoutException e) {
+            queLock.lock();
+            try {
+                server.playerDisconnected(number);
+            } finally {
+                queLock.unlock();
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     public Queue<GameEvent> getEvents() {
@@ -82,7 +98,7 @@ public class PlayerHandler {
         out.flush();
     }
 
-    public void sendInt(int i)throws IOException {
+    public void sendInt(int i) throws IOException {
         out.writeInt(i);
     }
 
@@ -91,11 +107,27 @@ public class PlayerHandler {
         return bulletIndex;
     }
 
-    public void flush() throws IOException{
+    public void flush() throws IOException {
         out.flush();
     }
 
     public int getNumber() {
         return number;
+    }
+
+    public void died() {
+        server.playerDied();
+    }
+
+    public void restart() {
+        running = false;
+        while (listenerThread.isAlive()) {
+            try {
+                listenerThread.join();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+        listenerThread = new Thread(this::readEvents);
     }
 }

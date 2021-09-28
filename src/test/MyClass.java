@@ -2,18 +2,19 @@ package test;
 
 import javax.swing.*;
 import java.awt.*;
+import java.io.IOException;
 
 public class MyClass {
     public static void main(String[] args) {
-        EventQueue.invokeLater(() -> {
-            JFrame frame = new JFrame("hej");
-            frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
-            JPanel panel = new JPanel();
-            panel.setPreferredSize(new Dimension(800, 800));
-            frame.add(panel);
-            frame.pack();
-            frame.setLocationRelativeTo(null);
-            frame.setVisible(true);
-        });
+        try {
+            try {
+                throw new IOException();
+            } finally {
+                System.out.println("Hello");
+            }
+
+        } catch (IOException e){
+            System.out.println(e);
+        }
     }
 }
