@@ -13,7 +13,7 @@ import java.util.Map;
 
 public class LocalPlayer extends Player {
 
-    private static final int SPEED = 3, SHOOT_DELAY = 100, MAX_STAMINA = 100, BULLET_SPEED = 100, SHOTGUN_SHOTS = 5;
+    private static final int SPEED = 3, SHOOT_DELAY = 100, MAX_STAMINA = 100, BULLET_SPEED = 100, SHOTGUN_SHOTS = 3;
 
     private static final double FRICTION = 0.7, MINIMUM_VELOCITY = 0.05, SPRINT_FACTOR = 2.0;
     private final Vector2d velocity;
@@ -37,6 +37,7 @@ public class LocalPlayer extends Player {
                 new Shotgun(SHOOT_DELAY, radius, BULLET_SPEED / 3, SHOTGUN_SHOTS)
         };
         this.activeWeapon = weapons[0];
+        this.sprintEnded = false;
     }
 
     private void handleInputs(Map<Integer, Boolean> keyMap) {

@@ -6,7 +6,6 @@ import java.io.*;
 import java.net.Socket;
 import java.net.SocketTimeoutException;
 import java.util.ArrayDeque;
-import java.util.Arrays;
 import java.util.Queue;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -54,11 +53,6 @@ public class PlayerHandler {
                 int totalEvents = in.readInt();
                 for (int i = 0; i < totalEvents; i++) {
                     GameEvent e = GameEvent.read(in);
-                    if (e == null) {
-                        byte[] b = in.readAllBytes();
-                        System.out.println(Arrays.toString(b));
-                        return;
-                    }
                     e.handle(this);
                     queLock.lock();
                     try {
@@ -80,6 +74,10 @@ public class PlayerHandler {
         }
     }
 
+    public void stopReaderThread(){
+        running = false;
+    }
+
     public Queue<GameEvent> getEvents() {
         return events;
     }
@@ -88,7 +86,8 @@ public class PlayerHandler {
         event.write(out);
     }
 
-    public void sendInitialData(int players, int[] startingPositions) throws IOException {
+    public void sendInitialData(int players, int[] startingPositions, int level) throws IOException {
+        out.writeInt(level);
         out.writeInt(players);
         out.writeInt(number);
         for (int i = 0; i < players; i++) {
@@ -119,8 +118,7 @@ public class PlayerHandler {
         server.playerDied();
     }
 
-    public void restart() {
-        running = false;
+    public void joinListenerThread() {
         while (listenerThread.isAlive()) {
             try {
                 listenerThread.join();
@@ -128,6 +126,8 @@ public class PlayerHandler {
                 e.printStackTrace();
             }
         }
-        listenerThread = new Thread(this::readEvents);
+        events.clear();
     }
+
+
 }

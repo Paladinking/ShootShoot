@@ -1,6 +1,8 @@
 package game.ui;
 
 import game.Game;
+import game.tiles.Level;
+import game.tiles.TileMap;
 
 import javax.swing.*;
 import java.awt.*;
@@ -9,9 +11,11 @@ import java.io.IOException;
 public class GamePanel extends JPanel {
 
     private final Game game;
+    private final LevelSelector levelSelector;
 
-    public GamePanel(Game game){
+    public GamePanel(Game game, LevelSelector levelSelector){
         this.game = game;
+        this.levelSelector = levelSelector;
     }
 
     @Override
@@ -27,9 +31,14 @@ public class GamePanel extends JPanel {
 
     public void startGame(String ip, int port) {
         try {
-            game.start(this, ip, port);
+            game.connect(ip, port);
+            game.start(this);
         } catch (IOException ioException) {
             ioException.printStackTrace();
         }
+    }
+
+    public TileMap getTileMap(int level) {
+        return levelSelector.getLevel(level).getTileMap();
     }
 }

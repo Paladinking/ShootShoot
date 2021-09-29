@@ -16,19 +16,23 @@ public class Server {
 
     private volatile boolean ready = false;
 
-    private static final int PLAYERS = 2, TIMEOUT_MILLIS = 5000;
+    private static final int PLAYERS = 3, TIMEOUT_MILLIS = 5000;
 
-    private final int[] startingPositions = new int[]{100, 100, 1820, 100, 100, 980, 1820, 980};
+    private final int[] startingPositions = new int[]{100, 100, 1820, 100, 100, 900, 1820, 900};
 
     private final List<PlayerHandler> playerHandlers = new ArrayList<>();
 
     private final Queue<GameEvent> serverEvents = new ArrayDeque<>();
 
-    private int livingPlayers;
+    private int livingPlayers, level;
 
-    private boolean restart = false;
+    private volatile boolean restart = false;
 
     public Server() {
+    }
+
+    public void setLevel(int level){
+        this.level = level;
     }
 
     public void open(int port) throws IOException {
@@ -45,9 +49,8 @@ public class Server {
             System.out.println(socket.getInetAddress() + " connected!");
         }
         livingPlayers = playerHandlers.size();
-        for (int i = 0; i < playerHandlers.size(); i++) {
-            PlayerHandler handler = playerHandlers.get(i);
-            handler.sendInitialData(PLAYERS, startingPositions);
+        for (PlayerHandler handler : playerHandlers) {
+            handler.sendInitialData(PLAYERS, startingPositions, level);
             handler.start();
         }
         start();
@@ -98,16 +101,24 @@ public class Server {
                         handler.sendInt(serverEvents.size());
                     }
                     while (!serverEvents.isEmpty()) {
-                        for (GameEvent event : serverEvents) {
-                            for (PlayerHandler handler : playerHandlers) {
-                                handler.sendEvent(event);
-                            }
+                        GameEvent event = serverEvents.remove();
+                        for (PlayerHandler handler : playerHandlers) {
+                            handler.sendEvent(event);
                         }
+
                     }
                     if (restart) {
-                        for (PlayerHandler handler : playerHandlers) {
-                            handler.restart();
+                        for (PlayerHandler handler: playerHandlers){
+                            handler.joinListenerThread();
                         }
+                        restart = false;
+                        livingPlayers = playerHandlers.size();
+                        serverEvents.clear();
+                        for (PlayerHandler handler : playerHandlers) {
+                            handler.sendInitialData(playerHandlers.size(), startingPositions, level);
+                            handler.start();
+                        }
+
                     }
                 }
             } catch (IOException ioException) {

@@ -206,6 +206,11 @@ public abstract class GameEvent {
     }
 
     public static GameEvent newGameReady(){
-        return new EmptyEvent(NEW_GAME_READY);
+        return new EmptyEvent(NEW_GAME_READY){
+            @Override
+            public void handle(PlayerHandler handler){
+                handler.stopReaderThread();
+            }
+        };
     }
 }

@@ -7,6 +7,13 @@ import java.util.Arrays;
 
 public class TileMap {
 
+    public TileMap(int width, int height) {
+        this.tiles = new TileType[height][];
+        for (int i = 0; i < height; i++){
+            tiles[i] = new TileType[width];
+        }
+    }
+
     public int getTileSize() {
         return tileSize;
     }
@@ -19,18 +26,15 @@ public class TileMap {
         EMPTY, WALL
     }
 
-    private final int tileSize;
+    public void setTileSize(int tileSize){
+        this.tileSize = tileSize;
+    }
+
+    private int tileSize;
 
     private final TileType[][] tiles;
 
-    public TileMap(int width, int height, int tileSize) {
-        this.tiles = new TileType[height][];
-        for (int i = 0; i < height; i++){
-            tiles[i] = new TileType[width];
-            Arrays.fill(tiles[i], TileType.EMPTY);
-        }
-        this.tileSize = tileSize;
-    }
+
 
     public void draw(Graphics2D g){
         for (int y = 0; y < tiles.length; y++){

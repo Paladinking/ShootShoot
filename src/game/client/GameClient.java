@@ -1,5 +1,6 @@
 package game.client;
 
+import game.Game;
 import game.events.GameEvent;
 import game.events.ServerEvent;
 import game.listeners.GameEventHandler;
@@ -17,6 +18,8 @@ public class GameClient implements GameEventHandler {
 
     private final int port;
 
+    private boolean receivingData;
+
     private final Queue<GameEvent> events;
 
     private DataInputStream in;
@@ -24,11 +27,17 @@ public class GameClient implements GameEventHandler {
 
     private Socket socket;
 
+    private final Game game;
 
-    public GameClient(String ip, int port) {
+    private int totalPlayers;
+
+    private Thread readerThread;
+
+    public GameClient(String ip, int port, Game game) {
         this.ip = ip;
         this.port = port;
         this.events = new ArrayDeque<>();
+        this.game = game;
     }
 
 
@@ -44,21 +53,37 @@ public class GameClient implements GameEventHandler {
         return in.readInt();
     }
 
-    public void receiveData(int totalPlayers, GameEventHandler handler) throws IOException {
+    public void init() {
+        try {
+            int level = in.readInt();
+            totalPlayers = in.readInt();
+            int playerNumber = in.readInt();
+            for (int i = 0; i < totalPlayers; i++) {
+                int x = in.readInt(), y = in.readInt();
+                game.createPlayer(x, y, i, i == playerNumber);
+            }
+            game.setLevel(level);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+    }
+
+    private void receiveData(GameEventHandler handler) throws IOException {
         for (int i = 0; i < totalPlayers; i++) {
             int source = in.readInt();
             int totalEvents = in.readInt();
-            for (int j = 0; j < totalEvents; j++){
+            for (int j = 0; j < totalEvents; j++) {
                 GameEvent event = GameEvent.read(in);
                 event.source = source;
                 handler.addEvent(event);
             }
         }
         int totalEvents = in.readInt();
-        for (int i = 0; i < totalEvents; i++){
+        for (int i = 0; i < totalEvents; i++) {
             ServerEvent event = ServerEvent.read(in);
             handler.addEvent(event);
-            handler.execImmediate(event);
+            event.executeImmediate(this);
         }
     }
 
@@ -74,5 +99,35 @@ public class GameClient implements GameEventHandler {
 
     public void addEvent(GameEvent event) {
         events.add(event);
+    }
+
+    public void startReaderThread() {
+        receivingData = true;
+        readerThread = new Thread(this::readData);
+        readerThread.start();
+    }
+
+    private void readData() {
+        try {
+            while (receivingData) {
+                receiveData(game);
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void stopReaderThread() {
+        receivingData = false;
+    }
+
+    public void joinReaderThread() {
+        while (readerThread.isAlive()) {
+            try {
+                readerThread.join();
+            } catch (InterruptedException ignored) {
+
+            }
+        }
     }
 }

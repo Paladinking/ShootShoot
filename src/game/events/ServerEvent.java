@@ -1,6 +1,7 @@
 package game.events;
 
 import game.Game;
+import game.client.GameClient;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
@@ -28,7 +29,7 @@ public abstract class ServerEvent extends GameEvent {
         return (ServerEvent) readers[type].read(in);
     }
 
-    public abstract void executeImmediate(Game game);
+    public abstract void executeImmediate(GameClient client);
 
     public static class NewGame extends ServerEvent{
         public NewGame() {
@@ -46,8 +47,8 @@ public abstract class ServerEvent extends GameEvent {
         }
 
         @Override
-        public void executeImmediate(Game game) {
-            game.stopReaderThread();
+        public void executeImmediate(GameClient client) {
+            client.stopReaderThread();
         }
     }
 
