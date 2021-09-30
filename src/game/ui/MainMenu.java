@@ -6,6 +6,7 @@ import game.server.Server;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.io.IOException;
 
 public class MainMenu {
@@ -13,6 +14,8 @@ public class MainMenu {
     private JFrame frame;
 
     private JPanel mainMenuPanel;
+
+    private JComponent waitingComponent;
 
     private LevelSelector levelSelector;
 
@@ -37,6 +40,18 @@ public class MainMenu {
         Game game = new Game(Game.WIDTH, Game.HEIGHT, screenSize.width, screenSize.height);
         levelSelector = new LevelSelector(Game.WIDTH, Game.HEIGHT);
         levelSelector.setPreferredSize(screenSize);
+        waitingComponent = new JComponent() {
+            @Override
+            public void paintComponent(Graphics g){
+                super.paintComponent(g);
+                g.setColor(Color.BLACK);
+                String s = "Waiting for players...";
+                g.setFont(new Font("Dialog", Font.PLAIN, 80));
+                int stringWidth = g.getFontMetrics().stringWidth(s);
+                g.drawString(s, getWidth() / 2 - stringWidth/2, getHeight()/2);
+            }
+        };
+        waitingComponent.setPreferredSize(screenSize);
         try {
             levelSelector.readLevelImages();
         } catch (IOException ioException) {
@@ -56,11 +71,13 @@ public class MainMenu {
     }
 
     public void host(ActionEvent e) {
+        join.setEnabled(false);
+        host.setEnabled(false);
         String ip = "127.0.0.1";
         int port = Integer.parseInt(portField.getText());
         frame.getContentPane().remove(0);
         frame.add(levelSelector);
-        frame.pack();
+        frame.validate();
         new Thread(() -> {
             int level = levelSelector.selectLevel();
             Server server = new Server();
@@ -78,6 +95,8 @@ public class MainMenu {
     }
 
     public void join(ActionEvent e) {
+        join.setEnabled(false);
+        host.setEnabled(false);
         String ip = ipField.getText();
         int port = Integer.parseInt(portField.getText());
         new Thread(()-> startGame(ip, port)).start();
@@ -106,11 +125,16 @@ public class MainMenu {
 
 
     public void startGame(String ip, int port) {
+        EventQueue.invokeLater(() -> {
+            frame.getContentPane().remove(0);
+            frame.add(waitingComponent);
+            frame.validate();
+        });
         gamePanel.startGame(ip, port);
         EventQueue.invokeLater(() -> {
             frame.getContentPane().remove(0);
             frame.add(gamePanel);
-            frame.pack();
+            frame.validate();
             gamePanel.requestFocus();
             gamePanel.addListeners();
         });

@@ -16,7 +16,7 @@ public class Server {
 
     private volatile boolean ready = false;
 
-    private static final int PLAYERS = 3, TIMEOUT_MILLIS = 5000;
+    private static final int PLAYERS = 2, TIMEOUT_MILLIS = 5000;
 
     private final int[] startingPositions = new int[]{100, 100, 1820, 100, 100, 900, 1820, 900};
 
@@ -24,14 +24,14 @@ public class Server {
 
     private final Queue<GameEvent> serverEvents = new ArrayDeque<>();
 
-    private int livingPlayers, level;
+    private volatile int livingPlayers, level;
 
     private volatile boolean restart = false;
 
     public Server() {
     }
 
-    public void setLevel(int level){
+    public void setLevel(int level) {
         this.level = level;
     }
 
@@ -108,7 +108,7 @@ public class Server {
 
                     }
                     if (restart) {
-                        for (PlayerHandler handler: playerHandlers){
+                        for (PlayerHandler handler : playerHandlers) {
                             handler.joinListenerThread();
                         }
                         restart = false;
@@ -135,13 +135,14 @@ public class Server {
 
 
     public void playerDied() {
-        livingPlayers--;
-        if (livingPlayers == 0) {
-            synchronized (this) {
+        synchronized (this) {
+            livingPlayers--;
+            if (livingPlayers == 1 || PLAYERS == 1) {
                 serverEvents.add(new ServerEvent.NewGame());
                 restart = true;
             }
         }
+
     }
 
     public void playerDisconnected(int number) {

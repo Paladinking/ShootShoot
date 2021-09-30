@@ -48,11 +48,6 @@ public class GameClient implements GameEventHandler {
         out = new DataOutputStream(socket.getOutputStream());
     }
 
-
-    public int readInt() throws IOException {
-        return in.readInt();
-    }
-
     public void init() {
         try {
             int level = in.readInt();

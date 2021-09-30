@@ -102,7 +102,7 @@ public abstract class GameEvent {
 
         @Override
         public void execute(Game game) {
-            game.createProjectile(xPos, yPos, xVel, yVel, type, index);
+            game.createProjectile(xPos, yPos, xVel, yVel, type, index, source);
         }
 
         @Override

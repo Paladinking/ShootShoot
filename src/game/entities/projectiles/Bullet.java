@@ -16,15 +16,15 @@ public class Bullet extends Projectile {
 
     private final ProjectileListener listener;
 
-    public Bullet(Vector2d position, Vector2d velocity, int bounces, ProjectileListener listener) {
+    public Bullet(Vector2d position, Vector2d velocity, int bounces, int source, ProjectileListener listener) {
         super(position, velocity);
         this.remainingBounces = bounces;
-        this.texture = new BulletTexture((int)position.x, (int)position.y);
+        this.texture = new BulletTexture((int)position.x, (int)position.y, source);
         this.listener = listener;
     }
 
-    public Bullet(double shotX, double shotY, double shotDx, double shotDy, int bounces, ProjectileListener listener) {
-        this(new Vector2d(shotX, shotY), new Vector2d(shotDx, shotDy), bounces, listener);
+    public Bullet(double shotX, double shotY, double shotDx, double shotDy, int bounces, int source, ProjectileListener listener) {
+        this(new Vector2d(shotX, shotY), new Vector2d(shotDx, shotDy), bounces,source, listener);
     }
 
     public void tick(TileMap tileMap, LocalPlayer player) {
@@ -67,7 +67,7 @@ public class Bullet extends Projectile {
         }
         position.set(step);
         if (bounced) remainingBounces--;
-        if (hitPlayer){
+        if (hitPlayer && !player.isDead()){
             listener.hitPlayer(player);
             remainingBounces = -1;
         }

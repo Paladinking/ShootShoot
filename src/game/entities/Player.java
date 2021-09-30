@@ -17,12 +17,13 @@ public class Player {
     private int hurtTicks;
     protected int hp;
 
-    protected final int radius;
+    protected final int radius, number;
 
     private final PlayerTexture texture;
 
-    public Player(int x, int y, int diameter, Color color){
-        this.texture = new PlayerTexture(this, color);
+    public Player(int x, int y, int diameter, int number){
+        this.texture = new PlayerTexture(this, number);
+        this.number = number;
         this.radius = diameter / 2;
         this.position = new Vector2d(x, y);
         this.hp = START_HP;

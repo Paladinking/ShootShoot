@@ -10,18 +10,23 @@ public class BulletTexture extends Texture {
 
     private static final int MIN_DRAW_POINTS = 6;
 
+    private final static Color[] colors = new Color[]{Color.GREEN, Color.RED, Color.BLUE, Color.YELLOW};
+
     private final static Stroke stroke = new BasicStroke(5);
 
     private final Queue<Point> pointsToDraw;
 
-    public BulletTexture(int x, int y) {
+    private final Color color;
+
+    public BulletTexture(int x, int y, int number) {
         this.pointsToDraw = new ArrayDeque<>();
+        this.color = colors[number];
         for (int i = 0; i < MIN_DRAW_POINTS; i++) pointsToDraw.add(new Point(x, y));
     }
 
     public void draw(Graphics2D g) {
         if (pointsToDraw.isEmpty()) return;
-        g.setColor(Color.ORANGE);
+        g.setColor(color);
         g.setStroke(stroke);
         Iterator<Point> it = pointsToDraw.iterator();
         Point p1, p2 = it.next();

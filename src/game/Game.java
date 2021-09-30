@@ -148,6 +148,8 @@ public class Game implements KeyListener, MouseMotionListener, PlayerListener, P
     @Override
     public void hitPlayer(LocalPlayer player) {
         player.hurt(1);
+        client.addEvent(new GameEvent.PlayerHurt(1));
+        if (player.isDead()) client.addEvent(GameEvent.playerDied());
     }
 
     public void tick() {
@@ -169,13 +171,6 @@ public class Game implements KeyListener, MouseMotionListener, PlayerListener, P
                 if (projectile.isDead()) {
                     it.remove();
                     client.addEvent(new GameEvent.ProjectileRemoved(entry.getKey()));
-                }
-            }
-            int damageTaken = localPlayer.getDamageTaken();
-            if (damageTaken > 0) {
-                client.addEvent(new GameEvent.PlayerHurt(damageTaken));
-                if (localPlayer.isDead()) {
-                    client.addEvent(GameEvent.playerDied());
                 }
             }
         } else {
@@ -259,14 +254,14 @@ public class Game implements KeyListener, MouseMotionListener, PlayerListener, P
         mousePos.y /= scalingFactor;
     }
 
-    public void createProjectile(double x, double y, double dx, double dy, int type, int index) {
+    public void createProjectile(double x, double y, double dx, double dy, int type, int index, int source) {
         Projectile projectile;
         if (Projectile.isBullet(type)) {
-            projectile = new Bullet(x, y, dx, dy, type, this);
+            projectile = new Bullet(x, y, dx, dy, type, source, this);
         } else if (Projectile.isRocket(type)) {
             projectile = new Rocket(x, y, dx, dy);
         } else {
-            projectile = new Bullet(x, y, dx, dy, 0, this);
+            projectile = new Bullet(x, y, dx, dy, 0, source, this);
         }
         projectiles.put(index, projectile);
         textures.add(projectile.getTexture());
@@ -291,14 +286,13 @@ public class Game implements KeyListener, MouseMotionListener, PlayerListener, P
     }
 
     public void createPlayer(int x, int y, int number, boolean isLocalPlayer) {
-        final Color[] colors = new Color[]{Color.RED, Color.GREEN, Color.BLUE, Color.BLACK};
         Player player;
         if (isLocalPlayer) {
-            localPlayer = new LocalPlayer(x, y, TILE_SIZE * 2, colors[number], this);
+            localPlayer = new LocalPlayer(x, y, TILE_SIZE * 2, number, this);
             player = localPlayer;
             playerNumber = number;
         } else {
-            player = new Player(x, y, TILE_SIZE * 2, colors[number]);
+            player = new Player(x, y, TILE_SIZE * 2, number);
         }
         players.add(player);
         textures.add(player.getTexture());
