@@ -9,9 +9,16 @@ import java.io.IOException;
 
 public abstract class GameEvent {
 
-    private static final byte TOTAL_EVENTS = 6;
+    private static final byte TOTAL_EVENTS = 7;
 
-    private static final byte PROJECTILE_CREATED = 0, PROJECTILE_REMOVED = 1, PLAYER_HURT = 2, PLAYER_MOVED = 3, PLAYER_DIED = 4, NEW_GAME_READY = 5;
+    private static final byte
+            PROJECTILE_CREATED = 0,
+            PROJECTILE_REMOVED = 1,
+            PLAYER_HURT = 2,
+            PLAYER_MOVED = 3,
+            PLAYER_DIED = 4,
+            PLAYER_CHANGED_ANGLE = 6,
+            NEW_GAME_READY = 5;
 
     private static final EventReader[] readers = new EventReader[TOTAL_EVENTS];
 
@@ -36,7 +43,12 @@ public abstract class GameEvent {
         readers[PLAYER_MOVED] = in -> {
             double x = in.readDouble();
             double y = in.readDouble();
-            return new PlayerMoved(x, y);
+            double angle = in.readDouble();
+            return new PlayerMoved(x, y, angle);
+        };
+        readers[PLAYER_CHANGED_ANGLE] = in -> {
+            double angle = in.readDouble();
+            return  new PlayerChangedAngle(angle);
         };
         readers[PLAYER_DIED] = in -> playerDied();
         readers[NEW_GAME_READY] = in -> newGameReady();
@@ -106,19 +118,16 @@ public abstract class GameEvent {
         }
 
         @Override
-        public void handle(PlayerHandler handler){
+        public void handle(PlayerHandler handler) {
             this.index = PlayerHandler.getBulletIndex();
         }
-
-
-
     }
 
     public static class ProjectileRemoved extends GameEvent {
 
         private final int index;
 
-        public ProjectileRemoved(int index){
+        public ProjectileRemoved(int index) {
             super(PROJECTILE_REMOVED);
             this.index = index;
         }
@@ -158,12 +167,13 @@ public abstract class GameEvent {
 
     public static class PlayerMoved extends GameEvent {
 
-        private final double newX, newY;
+        private final double newX, newY, angle;
 
-        public PlayerMoved(double newX, double newY) {
+        public PlayerMoved(double newX, double newY, double angle) {
             super(PLAYER_MOVED);
             this.newX = newX;
             this.newY = newY;
+            this.angle = angle;
         }
 
         @Override
@@ -171,11 +181,34 @@ public abstract class GameEvent {
             out.write(PLAYER_MOVED);
             out.writeDouble(newX);
             out.writeDouble(newY);
+            out.writeDouble(angle);
         }
 
         @Override
         public void execute(Game game) {
             game.movePlayer(newX, newY, source);
+            game.setPlayerAngle(angle, source);
+        }
+    }
+
+    public static class PlayerChangedAngle extends GameEvent {
+
+        private final double angle;
+
+        public PlayerChangedAngle(double angle) {
+            super(PLAYER_CHANGED_ANGLE);
+            this.angle = angle;
+        }
+
+        @Override
+        public void write(DataOutputStream out) throws IOException {
+            out.write(PLAYER_CHANGED_ANGLE);
+            out.writeDouble(angle);
+        }
+
+        @Override
+        public void execute(Game game) {
+            game.setPlayerAngle(angle, source);
         }
     }
 
@@ -191,24 +224,24 @@ public abstract class GameEvent {
         }
 
         @Override
-        public void execute(Game game){
+        public void execute(Game game) {
 
         }
     }
 
     public static GameEvent playerDied() {
-        return new EmptyEvent(PLAYER_DIED){
+        return new EmptyEvent(PLAYER_DIED) {
             @Override
-            public void handle(PlayerHandler handler){
+            public void handle(PlayerHandler handler) {
                 handler.died();
             }
         };
     }
 
-    public static GameEvent newGameReady(){
-        return new EmptyEvent(NEW_GAME_READY){
+    public static GameEvent newGameReady() {
+        return new EmptyEvent(NEW_GAME_READY) {
             @Override
-            public void handle(PlayerHandler handler){
+            public void handle(PlayerHandler handler) {
                 handler.stopReaderThread();
             }
         };

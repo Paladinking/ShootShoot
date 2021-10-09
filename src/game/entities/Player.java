@@ -1,5 +1,6 @@
 package game.entities;
 
+import game.listeners.GameEventHandler;
 import game.textures.PlayerTexture;
 import game.textures.Texture;
 import game.tiles.TileMap;
@@ -29,7 +30,7 @@ public class Player {
         this.hp = START_HP;
     }
 
-    public void tick(TileMap tileMap, Map<Integer, Boolean> keyMap){
+    public void tick(TileMap tileMap, Map<Integer, Boolean> keyMap, Point mousePos, GameEventHandler handler){
         if (hurtTicks > 0) {
             hurtTicks--;
             if (hurtTicks == 0) texture.setState(PlayerTexture.State.NORMAL);
@@ -60,5 +61,9 @@ public class Player {
 
     public Vector2d getPosition() {
         return position;
+    }
+
+    public void setAngle(double angle) {
+        this.texture.setAngle(angle);
     }
 }

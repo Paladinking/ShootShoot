@@ -1,10 +1,11 @@
 package game.entities;
 
+import game.events.GameEvent;
 import game.items.weaponds.Shotgun;
 import game.items.weaponds.Sniper;
 import game.items.weaponds.Weapon;
+import game.listeners.GameEventHandler;
 import game.tiles.TileMap;
-import game.listeners.PlayerListener;
 
 import javax.vecmath.Vector2d;
 import java.awt.*;
@@ -26,12 +27,9 @@ public class LocalPlayer extends Player {
 
     private int stamina;
 
-    private final PlayerListener listener;
-
-    public LocalPlayer(int x, int y, int diameter, int number, PlayerListener listener) {
+    public LocalPlayer(int x, int y, int diameter, int number) {
         super(x, y, diameter, number);
         this.velocity = new Vector2d(0, 0);
-        this.listener = listener;
         this.weapons = new Weapon[]{
                 new Sniper(SHOOT_DELAY, radius, BULLET_SPEED),
                 new Shotgun(SHOOT_DELAY, radius, BULLET_SPEED / 3, SHOTGUN_SHOTS)
@@ -40,7 +38,7 @@ public class LocalPlayer extends Player {
         this.sprintEnded = false;
     }
 
-    private void handleInputs(Map<Integer, Boolean> keyMap) {
+    private void handleInputs(Map<Integer, Boolean> keyMap, Point mousePos, TileMap tileMap, GameEventHandler handler) {
         boolean sprinting = keyMap.get(KeyEvent.VK_SHIFT) && stamina > 0 && !sprintEnded;
         if (sprinting) {
             stamina-=2;
@@ -67,17 +65,18 @@ public class LocalPlayer extends Player {
         if (keyMap.get(KeyEvent.VK_2)) activeWeapon = weapons[1];
 
         if (keyMap.get(KeyEvent.VK_SPACE) && activeWeapon.isReady()) {
-            listener.playerUsedWeapon(activeWeapon, this);
+            activeWeapon.use(handler, tileMap, position, mousePos);
         }
 
 
     }
 
-    public void tick(TileMap tileMap, Map<Integer, Boolean> keyMap) {
-        super.tick(tileMap, keyMap);
+    @Override
+    public void tick(TileMap tileMap, Map<Integer, Boolean> keyMap, Point mousePos, GameEventHandler handler) {
+        super.tick(tileMap, keyMap, mousePos, handler);
         if (isDead()) return;
         activeWeapon.tick();
-        handleInputs(keyMap);
+        handleInputs(keyMap, mousePos, tileMap, handler);
         if (velocity.lengthSquared() < MINIMUM_VELOCITY) {
             return;
         }
@@ -103,8 +102,9 @@ public class LocalPlayer extends Player {
             }
         }
         position.set(nextPosition);
-        listener.playerMoved(position);
-
+        double angle = Math.atan2(mousePos.y - position.y, mousePos.x - position.x);
+        setAngle(angle);
+        handler.addEvent(new GameEvent.PlayerMoved(position.x, position.y, angle));
     }
 
     public void setPosition(double x, double y) {

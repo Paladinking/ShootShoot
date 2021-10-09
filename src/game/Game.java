@@ -7,10 +7,8 @@ import game.entities.LocalPlayer;
 import game.entities.projectiles.Projectile;
 import game.entities.projectiles.Rocket;
 import game.events.GameEvent;
-import game.items.weaponds.Weapon;
 import game.listeners.GameEventHandler;
 import game.listeners.ProjectileListener;
-import game.listeners.PlayerListener;
 import game.textures.StartupCounter;
 import game.textures.Texture;
 import game.tiles.TileMap;
@@ -29,7 +27,7 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
-public class Game implements KeyListener, MouseMotionListener, PlayerListener, ProjectileListener, GameEventHandler {
+public class Game implements KeyListener, MouseMotionListener, ProjectileListener, GameEventHandler {
 
     public static final int WIDTH = 96, HEIGHT = 50, TILE_SIZE = 20;
 
@@ -37,7 +35,7 @@ public class Game implements KeyListener, MouseMotionListener, PlayerListener, P
 
     private final int width, height;
 
-    private final Object eventLock = new Object(), textureLock = new Object();
+    private final Object eventLock = new Object(), textureLock = new Object(), localEventLock = new Object();
 
     private final double scalingFactor;
 
@@ -133,18 +131,6 @@ public class Game implements KeyListener, MouseMotionListener, PlayerListener, P
         start(panel);
     }
 
-
-    @Override
-    public void playerUsedWeapon(Weapon weapon, LocalPlayer player) {
-        Vector2d pos = player.getPosition();
-        weapon.use(client, tileMap, pos, mousePos);
-    }
-
-    @Override
-    public void playerMoved(Vector2d pos) {
-        client.addEvent(new GameEvent.PlayerMoved(pos.x, pos.y));
-    }
-
     @Override
     public void hitPlayer(LocalPlayer player) {
         player.hurt(1);
@@ -160,8 +146,10 @@ public class Game implements KeyListener, MouseMotionListener, PlayerListener, P
             }
         }
         if (startUpTicks == 0) {
-            for (Player p : players) {
-                p.tick(tileMap, keyMap);
+            synchronized (localEventLock) {
+                for (Player p : players) {
+                    p.tick(tileMap, keyMap, mousePos, client);
+                }
             }
             Iterator<Map.Entry<Integer, Projectile>> it = projectiles.entrySet().iterator();
             while (it.hasNext()) {
@@ -231,27 +219,38 @@ public class Game implements KeyListener, MouseMotionListener, PlayerListener, P
     public void keyPressed(KeyEvent e) {
         int keyCode = e.getKeyCode();
         if (keyCode == KeyEvent.VK_ESCAPE) System.exit(0);
-        if (keyMap.containsKey(keyCode)) keyMap.put(keyCode, true);
+        synchronized (localEventLock) {
+            if (keyMap.containsKey(keyCode)) keyMap.put(keyCode, true);
+        }
     }
 
     @Override
     public void keyReleased(KeyEvent e) {
         int keyCode = e.getKeyCode();
-        if (keyMap.containsKey(keyCode)) keyMap.put(keyCode, false);
+        synchronized (localEventLock) {
+            if (keyMap.containsKey(keyCode)) keyMap.put(keyCode, false);
+        }
     }
 
     @Override
     public void mouseDragged(MouseEvent e) {
-        mousePos.setLocation(e.getX(), e.getY());
-        mousePos.x /= scalingFactor;
-        mousePos.y /= scalingFactor;
+        mousePositionChanged(e);
     }
 
     @Override
     public void mouseMoved(MouseEvent e) {
-        mousePos.setLocation(e.getX(), e.getY());
-        mousePos.x /= scalingFactor;
-        mousePos.y /= scalingFactor;
+        mousePositionChanged(e);
+    }
+
+    private void mousePositionChanged(MouseEvent e){
+        double x = e.getX() / scalingFactor, y = e.getY() / scalingFactor;
+        Vector2d pos = localPlayer.getPosition();
+        double angle = Math.atan2(y - pos.y, x - pos.x);
+        synchronized (localEventLock) {
+            mousePos.setLocation(x, y);
+            localPlayer.setAngle(angle);
+        }
+        client.addEvent(new GameEvent.PlayerChangedAngle(angle));
     }
 
     public void createProjectile(double x, double y, double dx, double dy, int type, int index, int source) {
@@ -277,7 +276,11 @@ public class Game implements KeyListener, MouseMotionListener, PlayerListener, P
     public void hurtPlayer(int amount, int source) {
         if (source == playerNumber) return;
         players.get(source).hurt(amount);
+    }
 
+    public void setPlayerAngle(double angle, int source) {
+        if (source == playerNumber) return;
+        players.get(source).setAngle(angle);
     }
 
     public void movePlayer(double newX, double newY, int source) {
@@ -288,7 +291,7 @@ public class Game implements KeyListener, MouseMotionListener, PlayerListener, P
     public void createPlayer(int x, int y, int number, boolean isLocalPlayer) {
         Player player;
         if (isLocalPlayer) {
-            localPlayer = new LocalPlayer(x, y, TILE_SIZE * 2, number, this);
+            localPlayer = new LocalPlayer(x, y, TILE_SIZE * 2, number);
             player = localPlayer;
             playerNumber = number;
         } else {

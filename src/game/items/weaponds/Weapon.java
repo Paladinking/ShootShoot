@@ -6,7 +6,6 @@ import game.tiles.TileMap;
 
 import javax.vecmath.Vector2d;
 import java.awt.*;
-import java.util.Collection;
 
 public abstract class Weapon {
 

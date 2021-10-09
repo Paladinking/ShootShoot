@@ -18,6 +18,8 @@ public class GameClient implements GameEventHandler {
 
     private final int port;
 
+    private final Object eventLock = new Object();
+
     private boolean receivingData;
 
     private final Queue<GameEvent> events;
@@ -83,17 +85,21 @@ public class GameClient implements GameEventHandler {
     }
 
     public void sendData() throws IOException {
-        int totalEvents = events.size();
-        out.writeInt(totalEvents);
-        while (!events.isEmpty()) {
-            GameEvent e = events.remove();
-            e.write(out);
+        synchronized (eventLock) {
+            int totalEvents = events.size();
+            out.writeInt(totalEvents);
+            while (!events.isEmpty()) {
+                GameEvent e = events.remove();
+                e.write(out);
+            }
         }
         out.flush();
     }
 
     public void addEvent(GameEvent event) {
-        events.add(event);
+        synchronized (eventLock) {
+            events.add(event);
+        }
     }
 
     public void startReaderThread() {
