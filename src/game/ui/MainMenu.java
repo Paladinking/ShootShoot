@@ -1,12 +1,13 @@
 package game.ui;
 
 import game.Game;
+import game.data.DataLoader;
 import game.server.Server;
+import game.tiles.Level;
 
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.io.IOException;
 
 public class MainMenu {
@@ -37,8 +38,16 @@ public class MainMenu {
         host = new JButton("Host");
         join = new JButton("Join");
         mainMenuPanel = getMainMenuPanel(screenSize);
-        Game game = new Game(Game.WIDTH, Game.HEIGHT, screenSize.width, screenSize.height);
-        levelSelector = new LevelSelector(Game.WIDTH, Game.HEIGHT);
+        DataLoader loader = new DataLoader();
+        try {
+            loader.readData();
+        } catch (IOException ioException) {
+            ioException.printStackTrace();
+        }
+        Level[] levels = loader.getLevels();
+        int levelWidth = loader.getLevelWidth(), levelHeight = loader.getLevelHeight();
+        Game game = new Game(levelWidth, levelHeight, screenSize.width, screenSize.height, levels);
+        levelSelector = new LevelSelector(levelWidth, levelHeight, levels);
         levelSelector.setPreferredSize(screenSize);
         waitingComponent = new JComponent() {
             @Override
@@ -52,12 +61,7 @@ public class MainMenu {
             }
         };
         waitingComponent.setPreferredSize(screenSize);
-        try {
-            levelSelector.readLevelImages();
-        } catch (IOException ioException) {
-            ioException.printStackTrace();
-        }
-        gamePanel = new GamePanel(game, levelSelector);
+        gamePanel = new GamePanel(game);
         gamePanel.setPreferredSize(screenSize);
     }
 

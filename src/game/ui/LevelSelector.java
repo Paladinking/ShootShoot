@@ -2,41 +2,33 @@ package game.ui;
 
 import game.tiles.Level;
 
-import javax.imageio.ImageIO;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
-import java.io.IOException;
 
 public class LevelSelector extends JPanel {
-
-    private final static String path = "images/";
 
     private static final Font FONT = new Font("Dialog", Font.PLAIN, 52);
     private static final int GAP = 20;
 
-    private final static String[] LEVEL_IMAGE_NAMES = new String[]{"stage.png", "stage2.png"};
-
-    private final Level[] levels = new Level[LEVEL_IMAGE_NAMES.length];
-
     private final int width, height;
+    private final Level[] levels;
 
     private volatile int selected = -1;
 
-    public LevelSelector(int width, int height) {
+    public LevelSelector(int width, int height, Level[] levels) {
         this.width = width;
         this.height = height;
+        this.levels = levels;
+        this.setLayout(new GridBagLayout());
     }
 
-    public void readLevelImages() throws IOException {
-        for (int i = 0; i < LEVEL_IMAGE_NAMES.length; i++) {
-            BufferedImage image = ImageIO.read(ClassLoader.getSystemResource(path + LEVEL_IMAGE_NAMES[i]));
-            if (image.getWidth() != width || image.getHeight() != height) throw new IOException("Bad level size");
-            levels[i] = new Level(image);
-        }
-        setLayout(new GridBagLayout());
+
+    @Override
+    public void setPreferredSize(Dimension preferredSize) {
+        super.setPreferredSize(preferredSize);
         int columns = getPreferredSize().width / (2 * (width + GAP));
         GridBagConstraints constraints = new GridBagConstraints();
         constraints.gridy = 0;
@@ -47,8 +39,6 @@ public class LevelSelector extends JPanel {
             levelComponent.setPreferredSize(new Dimension(width * 2, height * 2));
             add(levelComponent, constraints);
         }
-
-
     }
 
     private static class LevelComponent extends JComponent {

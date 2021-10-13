@@ -90,7 +90,7 @@ public class GameClient implements GameEventHandler {
             out.writeInt(totalEvents);
             while (!events.isEmpty()) {
                 GameEvent e = events.remove();
-                e.write(out);
+                GameEvent.write(e, out);
             }
         }
         out.flush();

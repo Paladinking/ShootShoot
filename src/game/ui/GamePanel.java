@@ -11,11 +11,9 @@ import java.io.IOException;
 public class GamePanel extends JPanel {
 
     private final Game game;
-    private final LevelSelector levelSelector;
 
-    public GamePanel(Game game, LevelSelector levelSelector){
+    public GamePanel(Game game){
         this.game = game;
-        this.levelSelector = levelSelector;
     }
 
     @Override
@@ -36,9 +34,5 @@ public class GamePanel extends JPanel {
         } catch (IOException ioException) {
             ioException.printStackTrace();
         }
-    }
-
-    public TileMap getTileMap(int level) {
-        return levelSelector.getLevel(level).getTileMap();
     }
 }

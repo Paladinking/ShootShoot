@@ -1,6 +1,6 @@
 package game.items.weaponds;
 
-import game.events.GameEvent;
+import game.events.ProjectileCreated;
 import game.listeners.GameEventHandler;
 import game.tiles.TileMap;
 
@@ -26,7 +26,7 @@ public abstract class Weapon {
           bulletPos.add(new Vector2d(projectileVector.x * (radius + 1), projectileVector.y * (radius + 1)));
           if (tileMap.isOpen(bulletPos)) {
                projectileVector.scale(projectileSpeed);
-               handler.addEvent(new GameEvent.ProjectileCreated(bulletPos.x, bulletPos.y, projectileVector.x, projectileVector.y, type));
+               handler.addEvent(new ProjectileCreated(bulletPos.x, bulletPos.y, projectileVector.x, projectileVector.y, type));
           }
      }
 

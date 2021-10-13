@@ -16,13 +16,13 @@ public class Server {
 
     private volatile boolean ready = false;
 
-    private static final int PLAYERS = 2, TIMEOUT_MILLIS = 5000;
+    private static final int PLAYERS = 1, TIMEOUT_MILLIS = 5000;
 
     private final int[] startingPositions = new int[]{100, 100, 1820, 100, 100, 900, 1820, 900};
 
     private final List<PlayerHandler> playerHandlers = new ArrayList<>();
 
-    private final Queue<GameEvent> serverEvents = new ArrayDeque<>();
+    private final Queue<ServerEvent> serverEvents = new ArrayDeque<>();
 
     private volatile int livingPlayers, level;
 
@@ -73,25 +73,29 @@ public class Server {
         boolean running = true;
         while (running) {
             try {
-                for (int i = 0; i < playerHandlers.size(); i++) {
+                for (PlayerHandler player : playerHandlers) {
+                    int number = player.getNumber();
                     for (PlayerHandler handler : playerHandlers) {
-                        handler.sendInt(i);
+                        handler.sendInt(number);
                     }
-                    Lock lock = playerHandlers.get(i).getLock();
+                    Lock lock = player.getLock();
                     lock.lock();
                     try {
-                        Queue<GameEvent> events = playerHandlers.get(i).getEvents();
+                        Queue<GameEvent> events = player.getEvents();
                         int totalEvents = events.size();
-                        for (PlayerHandler handler : playerHandlers) {
+                        // For every playerHandler that is not player:
+                        for (int i = 1; i <= playerHandlers.size() - 1; i++){
+                            PlayerHandler handler = playerHandlers.get((number + i) % playerHandlers.size());
                             handler.sendInt(totalEvents);
                         }
                         for (int j = 0; j < totalEvents; j++) {
                             GameEvent e = events.remove();
-                            for (PlayerHandler handler : playerHandlers) {
-                                ;
+                            for (int i = 1; i <= playerHandlers.size() - 1; i++){
+                                PlayerHandler handler = playerHandlers.get((number + i) % playerHandlers.size());
                                 handler.sendEvent(e);
                             }
                         }
+                        player.sendSelfEvents();
                     } finally {
                         lock.unlock();
                     }
@@ -101,7 +105,7 @@ public class Server {
                         handler.sendInt(serverEvents.size());
                     }
                     while (!serverEvents.isEmpty()) {
-                        GameEvent event = serverEvents.remove();
+                        ServerEvent event = serverEvents.remove();
                         for (PlayerHandler handler : playerHandlers) {
                             handler.sendEvent(event);
                         }

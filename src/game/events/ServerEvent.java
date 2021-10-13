@@ -11,7 +11,7 @@ public abstract class ServerEvent extends GameEvent {
 
     private static final int TOTAL_EVENTS = 1;
 
-    private static final int NEW_GAME = 0;
+    protected static final int NEW_GAME = 0;
 
     private static final GameEvent.EventReader[] readers;
 
@@ -21,7 +21,12 @@ public abstract class ServerEvent extends GameEvent {
     }
 
     protected ServerEvent(int type) {
-        super(type);
+        super(type, false);
+    }
+
+    public static void write(ServerEvent event, DataOutputStream out) throws IOException {
+        out.write(event.type);
+        event.write(out);
     }
 
     public static ServerEvent read(DataInputStream in) throws IOException{
@@ -31,14 +36,14 @@ public abstract class ServerEvent extends GameEvent {
 
     public abstract void executeImmediate(GameClient client);
 
-    public static class NewGame extends ServerEvent{
+    public static class NewGame extends ServerEvent {
         public NewGame() {
             super(NEW_GAME);
         }
 
         @Override
-        public void write(DataOutputStream out) throws IOException {
-            out.write(NEW_GAME);
+        protected void write(DataOutputStream out) throws IOException {
+
         }
 
         @Override

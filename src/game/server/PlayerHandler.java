@@ -1,6 +1,7 @@
 package game.server;
 
 import game.events.GameEvent;
+import game.events.ServerEvent;
 
 import java.io.*;
 import java.net.Socket;
@@ -20,6 +21,7 @@ public class PlayerHandler {
     private final DataInputStream in;
 
     private final Queue<GameEvent> events;
+    private final Queue<GameEvent> selfEvents;
 
     private final int number;
 
@@ -33,6 +35,7 @@ public class PlayerHandler {
         this.in = new DataInputStream(socket.getInputStream());
         this.out = new DataOutputStream(socket.getOutputStream());
         this.events = new ArrayDeque<>();
+        this.selfEvents = new ArrayDeque<>();
         this.number = number;
         this.server = server;
     }
@@ -57,6 +60,7 @@ public class PlayerHandler {
                     queLock.lock();
                     try {
                         events.add(e);
+                        if (e.propagateBack) selfEvents.add(e);
                     } finally {
                         queLock.unlock();
                     }
@@ -74,7 +78,7 @@ public class PlayerHandler {
         }
     }
 
-    public void stopReaderThread(){
+    public void stopReaderThread() {
         running = false;
     }
 
@@ -83,7 +87,26 @@ public class PlayerHandler {
     }
 
     public void sendEvent(GameEvent event) throws IOException {
-        event.write(out);
+        GameEvent.write(event, out);
+    }
+
+    public void sendEvent(ServerEvent event) throws IOException {
+        ServerEvent.write(event, out);
+    }
+
+    /**
+     * Sends all events contained in <code>selfEvents</code> to the client of this <code>PlayerHandler</code>.
+     * The <code>selfEvents</code> queue will be empty when this function returns. Should only be called
+     * after acquiring the eventLock of <code>this</code>.
+     * @throws IOException If an IOException occurs.
+     */
+    public void sendSelfEvents() throws IOException{
+        int totalEvents = selfEvents.size();
+        out.writeInt(totalEvents);
+        for (int i = 0; i < totalEvents; i++){
+            GameEvent e = selfEvents.remove();
+            GameEvent.write(e, out);
+        }
     }
 
     public void sendInitialData(int players, int[] startingPositions, int level) throws IOException {
@@ -106,14 +129,6 @@ public class PlayerHandler {
         return bulletIndex;
     }
 
-    public void flush() throws IOException {
-        out.flush();
-    }
-
-    public int getNumber() {
-        return number;
-    }
-
     public void died() {
         server.playerDied();
     }
@@ -130,4 +145,7 @@ public class PlayerHandler {
     }
 
 
+    public int getNumber() {
+        return number;
+    }
 }

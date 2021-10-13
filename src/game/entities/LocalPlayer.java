@@ -1,6 +1,6 @@
 package game.entities;
 
-import game.events.GameEvent;
+import game.events.PlayerMoved;
 import game.items.weaponds.Shotgun;
 import game.items.weaponds.Sniper;
 import game.items.weaponds.Weapon;
@@ -104,7 +104,7 @@ public class LocalPlayer extends Player {
         position.set(nextPosition);
         double angle = Math.atan2(mousePos.y - position.y, mousePos.x - position.x);
         setAngle(angle);
-        handler.addEvent(new GameEvent.PlayerMoved(position.x, position.y, angle));
+        handler.addEvent(new PlayerMoved(position.x, position.y, angle));
     }
 
     public void setPosition(double x, double y) {

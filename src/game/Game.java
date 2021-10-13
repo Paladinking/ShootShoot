@@ -7,10 +7,14 @@ import game.entities.LocalPlayer;
 import game.entities.projectiles.Projectile;
 import game.entities.projectiles.Rocket;
 import game.events.GameEvent;
+import game.events.PlayerChangedAngle;
+import game.events.PlayerHurt;
+import game.events.ProjectileRemoved;
 import game.listeners.GameEventHandler;
 import game.listeners.ProjectileListener;
 import game.textures.StartupCounter;
 import game.textures.Texture;
+import game.tiles.Level;
 import game.tiles.TileMap;
 import game.ui.GamePanel;
 
@@ -39,9 +43,9 @@ public class Game implements KeyListener, MouseMotionListener, ProjectileListene
 
     private final double scalingFactor;
 
-    private final Map<Integer, Boolean> keyMap;
+    private final Level[] levels;
 
-    private GamePanel panel;
+    private final Map<Integer, Boolean> keyMap;
 
     private final ScheduledThreadPoolExecutor executor = new ScheduledThreadPoolExecutor(1);
     private ScheduledFuture<?> tickFuture;
@@ -49,22 +53,20 @@ public class Game implements KeyListener, MouseMotionListener, ProjectileListene
     private GameClient client;
 
     private final Map<Integer, Projectile> projectiles;
-
+    private final List<Player> players;
+    private LocalPlayer localPlayer;
     private final List<Texture> textures;
 
     private TileMap tileMap;
 
-    private final List<Player> players;
-
-    private LocalPlayer localPlayer;
-
-    private int playerNumber, startUpTicks;
+    private int startUpTicks;
 
     private final Point mousePos;
 
     private final Queue<GameEvent> events;
+    private GamePanel panel;
 
-    public Game(int width, int height, int pixelWidth, int pixelHeight) {
+    public Game(int width, int height, int pixelWidth, int pixelHeight, Level[] levels) {
         this.width = width;
         this.height = height;
         this.scalingFactor = pixelWidth / ((double) width * TILE_SIZE);
@@ -75,6 +77,7 @@ public class Game implements KeyListener, MouseMotionListener, ProjectileListene
         this.textures = new ArrayList<>();
         this.events = new ArrayDeque<>(INITIAL_EVENT_CAPACITY);
         this.tileMap = new TileMap(0, 0);
+        this.levels = levels;
         initKeys();
     }
 
@@ -96,19 +99,19 @@ public class Game implements KeyListener, MouseMotionListener, ProjectileListene
     }
 
     public void setLevel(int level) {
-        this.tileMap = panel.getTileMap(level);
+        this.tileMap = levels[level].getTileMap();
         this.tileMap.setTileSize(TILE_SIZE);
     }
 
-    public void start(GamePanel panel) {
-        this.panel = panel;
+    public void start(GamePanel gamePanel) {
+        this.panel = gamePanel;
         startUpTicks = STARTUP_TICKS;
         client.init();
         client.startReaderThread();
         textures.add(new StartupCounter(width / 2 * TILE_SIZE, height / 2 * TILE_SIZE, startUpTicks + startUpTicks / 3));
-        tickFuture = executor.scheduleAtFixedRate(()-> {
-            tick();
-            EventQueue.invokeLater(panel::repaint);
+        tickFuture = executor.scheduleAtFixedRate(()->{
+            this.tick();
+            EventQueue.invokeLater(gamePanel::repaint);
         }, 16, 16, TimeUnit.MILLISECONDS);
     }
 
@@ -128,13 +131,13 @@ public class Game implements KeyListener, MouseMotionListener, ProjectileListene
         } catch (IOException ioException) {
             ioException.printStackTrace();
         }
-        start(panel);
+        start(this.panel);
     }
 
     @Override
     public void hitPlayer(LocalPlayer player) {
         player.hurt(1);
-        client.addEvent(new GameEvent.PlayerHurt(1));
+        client.addEvent(new PlayerHurt(1));
         if (player.isDead()) client.addEvent(GameEvent.playerDied());
     }
 
@@ -158,7 +161,7 @@ public class Game implements KeyListener, MouseMotionListener, ProjectileListene
                 projectile.tick(tileMap, localPlayer);
                 if (projectile.isDead()) {
                     it.remove();
-                    client.addEvent(new GameEvent.ProjectileRemoved(entry.getKey()));
+                    client.addEvent(new ProjectileRemoved(entry.getKey()));
                 }
             }
         } else {
@@ -210,9 +213,58 @@ public class Game implements KeyListener, MouseMotionListener, ProjectileListene
     }
 
 
-    @Override
-    public void keyTyped(KeyEvent e) {
+    public void createProjectile(double x, double y, double dx, double dy, int type, int index, int source) {
+        Projectile projectile;
+        if (Projectile.isBullet(type)) {
+            projectile = new Bullet(x, y, dx, dy, type, source, this);
+        } else if (Projectile.isRocket(type)) {
+            projectile = new Rocket(x, y, dx, dy);
+        } else {
+            projectile = new Bullet(x, y, dx, dy, 0, source, this);
+        }
+        projectiles.put(index, projectile);
+        textures.add(projectile.getTexture());
 
+    }
+
+    public void removeProjectile(int index) {
+        projectiles.remove(index);
+    }
+
+    public void hurtPlayer(int amount, int source) {
+        players.get(source).hurt(amount);
+    }
+
+    public void setPlayerAngle(double angle, int source) {
+        players.get(source).setAngle(angle);
+    }
+
+    public void movePlayer(double newX, double newY, int source) {
+        players.get(source).setPosition(newX, newY);
+    }
+
+    public void createPlayer(int x, int y, int number, boolean isLocalPlayer) {
+        Player player;
+        if (isLocalPlayer) {
+            localPlayer = new LocalPlayer(x, y, TILE_SIZE * 2, number);
+            player = localPlayer;
+        } else {
+            player = new Player(x, y, TILE_SIZE * 2, number);
+        }
+        players.add(player);
+        textures.add(player.getTexture());
+    }
+
+
+    /*
+     * These methods are running on a different thread than the rest of the file.
+     *
+     */
+
+    public void addEvent(GameEvent event) {
+        synchronized (eventLock) {
+            events.add(event);
+        }
     }
 
     @Override
@@ -242,7 +294,7 @@ public class Game implements KeyListener, MouseMotionListener, ProjectileListene
         mousePositionChanged(e);
     }
 
-    private void mousePositionChanged(MouseEvent e){
+    private void mousePositionChanged(MouseEvent e) {
         double x = e.getX() / scalingFactor, y = e.getY() / scalingFactor;
         Vector2d pos = localPlayer.getPosition();
         double angle = Math.atan2(y - pos.y, x - pos.x);
@@ -250,66 +302,13 @@ public class Game implements KeyListener, MouseMotionListener, ProjectileListene
             mousePos.setLocation(x, y);
             localPlayer.setAngle(angle);
         }
-        client.addEvent(new GameEvent.PlayerChangedAngle(angle));
-    }
-
-    public void createProjectile(double x, double y, double dx, double dy, int type, int index, int source) {
-        Projectile projectile;
-        if (Projectile.isBullet(type)) {
-            projectile = new Bullet(x, y, dx, dy, type, source, this);
-        } else if (Projectile.isRocket(type)) {
-            projectile = new Rocket(x, y, dx, dy);
-        } else {
-            projectile = new Bullet(x, y, dx, dy, 0, source, this);
-        }
-        projectiles.put(index, projectile);
-        textures.add(projectile.getTexture());
-
-    }
-
-    public void removeProjectile(int index, int source) {
-        if (source == playerNumber) return;
-        projectiles.remove(index);
-
-    }
-
-    public void hurtPlayer(int amount, int source) {
-        if (source == playerNumber) return;
-        players.get(source).hurt(amount);
-    }
-
-    public void setPlayerAngle(double angle, int source) {
-        if (source == playerNumber) return;
-        players.get(source).setAngle(angle);
-    }
-
-    public void movePlayer(double newX, double newY, int source) {
-        if (source == playerNumber) return;
-        players.get(source).setPosition(newX, newY);
-    }
-
-    public void createPlayer(int x, int y, int number, boolean isLocalPlayer) {
-        Player player;
-        if (isLocalPlayer) {
-            localPlayer = new LocalPlayer(x, y, TILE_SIZE * 2, number);
-            player = localPlayer;
-            playerNumber = number;
-        } else {
-            player = new Player(x, y, TILE_SIZE * 2, number);
-        }
-        players.add(player);
-        textures.add(player.getTexture());
+        client.addEvent(new PlayerChangedAngle(angle));
     }
 
 
-    /*
-     * These methods are running on a different thread than the rest of the file.
-     *
-     */
+    // Unused event...
+    @Override
+    public void keyTyped(KeyEvent e) {
 
-    public void addEvent(GameEvent event) {
-        synchronized (eventLock) {
-            events.add(event);
-        }
     }
 }

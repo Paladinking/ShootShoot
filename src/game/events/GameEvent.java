@@ -11,7 +11,7 @@ public abstract class GameEvent {
 
     private static final byte TOTAL_EVENTS = 7;
 
-    private static final byte
+    protected static final byte
             PROJECTILE_CREATED = 0,
             PROJECTILE_REMOVED = 1,
             PLAYER_HURT = 2,
@@ -56,18 +56,25 @@ public abstract class GameEvent {
 
     protected final int type;
 
+    public final boolean propagateBack;
+
     public int source;
 
-    protected GameEvent(int type) {
+    protected GameEvent(int type, boolean propagateBack) {
         this.type = type;
+        this.propagateBack = propagateBack;
     }
 
-    public abstract void write(DataOutputStream out) throws IOException;
+    protected abstract void write(DataOutputStream out) throws IOException;
 
     public static GameEvent read(DataInputStream in) throws IOException {
         int type = in.read();
-
         return readers[type].read(in);
+    }
+
+    public static void write(GameEvent event, DataOutputStream out) throws IOException {
+        out.write(event.type);
+        event.write(out);
     }
 
     public abstract void execute(Game game);
@@ -78,155 +85,6 @@ public abstract class GameEvent {
 
     protected interface EventReader {
         GameEvent read(DataInputStream in) throws IOException;
-    }
-
-    public static class ProjectileCreated extends GameEvent {
-        private final double xPos, yPos, xVel, yVel;
-        private final int type;
-
-        private int index;
-
-        public ProjectileCreated(double xPos, double yPos, double xVel, double yVel, int type) {
-            super(PROJECTILE_CREATED);
-            this.xPos = xPos;
-            this.yPos = yPos;
-            this.xVel = xVel;
-            this.yVel = yVel;
-            this.type = type;
-            this.index = -1;
-        }
-
-        public ProjectileCreated(double x, double y, double dx, double dy, int type, int index) {
-            this(x, y, dx, dy, type);
-            this.index = index;
-        }
-
-        @Override
-        public void write(DataOutputStream out) throws IOException {
-            out.write(PROJECTILE_CREATED);
-            out.writeDouble(xPos);
-            out.writeDouble(yPos);
-            out.writeDouble(xVel);
-            out.writeDouble(yVel);
-            out.writeInt(type);
-            out.writeInt(index);
-        }
-
-        @Override
-        public void execute(Game game) {
-            game.createProjectile(xPos, yPos, xVel, yVel, type, index, source);
-        }
-
-        @Override
-        public void handle(PlayerHandler handler) {
-            this.index = PlayerHandler.getBulletIndex();
-        }
-    }
-
-    public static class ProjectileRemoved extends GameEvent {
-
-        private final int index;
-
-        public ProjectileRemoved(int index) {
-            super(PROJECTILE_REMOVED);
-            this.index = index;
-        }
-
-        @Override
-        public void write(DataOutputStream out) throws IOException {
-            out.write(PROJECTILE_REMOVED);
-            out.writeInt(index);
-        }
-
-        @Override
-        public void execute(Game game) {
-            game.removeProjectile(index, source);
-        }
-    }
-
-    public static class PlayerHurt extends GameEvent {
-
-        private final int amount;
-
-        public PlayerHurt(int amount) {
-            super(PLAYER_HURT);
-            this.amount = amount;
-        }
-
-        @Override
-        public void write(DataOutputStream out) throws IOException {
-            out.write(PLAYER_HURT);
-            out.writeInt(amount);
-        }
-
-        @Override
-        public void execute(Game game) {
-            game.hurtPlayer(amount, source);
-        }
-    }
-
-    public static class PlayerMoved extends GameEvent {
-
-        private final double newX, newY, angle;
-
-        public PlayerMoved(double newX, double newY, double angle) {
-            super(PLAYER_MOVED);
-            this.newX = newX;
-            this.newY = newY;
-            this.angle = angle;
-        }
-
-        @Override
-        public void write(DataOutputStream out) throws IOException {
-            out.write(PLAYER_MOVED);
-            out.writeDouble(newX);
-            out.writeDouble(newY);
-            out.writeDouble(angle);
-        }
-
-        @Override
-        public void execute(Game game) {
-            game.movePlayer(newX, newY, source);
-            game.setPlayerAngle(angle, source);
-        }
-    }
-
-    public static class PlayerChangedAngle extends GameEvent {
-
-        private final double angle;
-
-        public PlayerChangedAngle(double angle) {
-            super(PLAYER_CHANGED_ANGLE);
-            this.angle = angle;
-        }
-
-        @Override
-        public void write(DataOutputStream out) throws IOException {
-            out.write(PLAYER_CHANGED_ANGLE);
-            out.writeDouble(angle);
-        }
-
-        @Override
-        public void execute(Game game) {
-            game.setPlayerAngle(angle, source);
-        }
-    }
-
-    private static class EmptyEvent extends GameEvent {
-
-        protected EmptyEvent(int type) {
-            super(type);
-        }
-
-        @Override
-        public void write(DataOutputStream out) throws IOException {
-            out.write(type);
-        }
-
-        @Override
-        public void execute(Game game) {
-
-        }
     }
 
     public static GameEvent playerDied() {
