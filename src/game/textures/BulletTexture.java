@@ -2,6 +2,7 @@ package game.textures;
 
 import javax.vecmath.Vector2d;
 import java.awt.*;
+import java.awt.image.BufferedImage;
 import java.util.ArrayDeque;
 import java.util.Iterator;
 import java.util.Queue;

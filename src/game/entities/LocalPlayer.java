@@ -1,6 +1,7 @@
 package game.entities;
 
 import game.events.PlayerMoved;
+import game.items.weaponds.MinePlacer;
 import game.items.weaponds.Shotgun;
 import game.items.weaponds.Sniper;
 import game.items.weaponds.Weapon;
@@ -14,18 +15,19 @@ import java.util.Map;
 
 public class LocalPlayer extends Player {
 
-    private static final int SPEED = 3, SHOOT_DELAY = 100, MAX_STAMINA = 100, BULLET_SPEED = 100, SHOTGUN_SHOTS = 3;
+    private static final int SPEED = 3, SHOOT_DELAY = 100, MAX_STAMINA = 100, BULLET_SPEED = 100, SHOTGUN_SHOTS = 3,
+        INVINCIBILITY_TICKS = 16;
 
     private static final double FRICTION = 0.7, MINIMUM_VELOCITY = 0.05, SPRINT_FACTOR = 2.0;
     private final Vector2d velocity;
 
     private final Weapon[] weapons;
 
-    private Weapon activeWeapon;
+    private Weapon activeWeapon, sideWeapon;
 
     private boolean sprintEnded;
 
-    private int stamina;
+    private int stamina, invTicks;
 
     public LocalPlayer(int x, int y, int diameter, int number) {
         super(x, y, diameter, number);
@@ -35,13 +37,14 @@ public class LocalPlayer extends Player {
                 new Shotgun(SHOOT_DELAY, radius, BULLET_SPEED / 3, SHOTGUN_SHOTS)
         };
         this.activeWeapon = weapons[0];
+        this.sideWeapon = new MinePlacer(SHOOT_DELAY);
         this.sprintEnded = false;
     }
 
     private void handleInputs(Map<Integer, Boolean> keyMap, Point mousePos, TileMap tileMap, GameEventHandler handler) {
         boolean sprinting = keyMap.get(KeyEvent.VK_SHIFT) && stamina > 0 && !sprintEnded;
         if (sprinting) {
-            stamina-=2;
+            stamina -= 2;
             if (stamina <= 0){
                 sprintEnded = true;
             }
@@ -49,7 +52,6 @@ public class LocalPlayer extends Player {
             stamina++;
         }
         if (sprintEnded && !keyMap.get(KeyEvent.VK_SHIFT)) sprintEnded = false;
-
 
         Vector2d acceleration = new Vector2d(0, 0);
         if (keyMap.get(KeyEvent.VK_W)) acceleration.y--;
@@ -63,11 +65,12 @@ public class LocalPlayer extends Player {
 
         if (keyMap.get(KeyEvent.VK_1)) activeWeapon = weapons[0];
         if (keyMap.get(KeyEvent.VK_2)) activeWeapon = weapons[1];
-
-        if (keyMap.get(KeyEvent.VK_SPACE) && activeWeapon.isReady()) {
-            activeWeapon.use(handler, tileMap, position, mousePos);
+        if (keyMap.get(KeyEvent.VK_SPACE)) {
+            activeWeapon.tryUse(handler, tileMap, position, mousePos);
         }
-
+        if (keyMap.get(KeyEvent.VK_Q)) {
+            sideWeapon.tryUse(handler, tileMap, position, new Point((int)position.x, (int)position.y));
+        }
 
     }
 
@@ -75,7 +78,9 @@ public class LocalPlayer extends Player {
     public void tick(TileMap tileMap, Map<Integer, Boolean> keyMap, Point mousePos, GameEventHandler handler) {
         super.tick(tileMap, keyMap, mousePos, handler);
         if (isDead()) return;
+        if (invTicks > 0) invTicks--;
         activeWeapon.tick();
+        sideWeapon.tick();
         handleInputs(keyMap, mousePos, tileMap, handler);
         if (velocity.lengthSquared() < MINIMUM_VELOCITY) {
             return;
@@ -115,8 +120,13 @@ public class LocalPlayer extends Player {
     @Override
     public void hurt(int amount){
         super.hurt(amount);
+        invTicks = INVINCIBILITY_TICKS;
     }
 
+
+    public boolean isInvincible(){
+        return invTicks > 0;
+    }
 
     public Vector2d getPosition() {
         return position;
@@ -131,7 +141,7 @@ public class LocalPlayer extends Player {
     }
 
     public double getShootDelayFraction() {
-        return activeWeapon.getShootDelayFraction();
+        return activeWeapon.getDelayFraction();
     }
 
     public double getStaminaFraction() {

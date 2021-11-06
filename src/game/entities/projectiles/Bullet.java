@@ -14,20 +14,18 @@ public class Bullet extends Projectile {
 
     private final BulletTexture texture;
 
-    private final ProjectileListener listener;
-
     public Bullet(Vector2d position, Vector2d velocity, int bounces, int source, ProjectileListener listener) {
-        super(position, velocity);
+        super(position, velocity, listener);
         this.remainingBounces = bounces;
         this.texture = new BulletTexture((int)position.x, (int)position.y, source);
-        this.listener = listener;
     }
 
     public Bullet(double shotX, double shotY, double shotDx, double shotDy, int bounces, int source, ProjectileListener listener) {
         this(new Vector2d(shotX, shotY), new Vector2d(shotDx, shotDy), bounces,source, listener);
     }
 
-    public void tick(TileMap tileMap, LocalPlayer player) {
+    @Override
+    public Status tick(TileMap tileMap, LocalPlayer player, int id) {
         final int tileSize = tileMap.getTileSize();
         Vector2d normalVel = new Vector2d(velocity);
         normalVel.normalize();
@@ -67,16 +65,14 @@ public class Bullet extends Projectile {
         }
         position.set(step);
         if (bounced) remainingBounces--;
-        if (hitPlayer && !player.isDead()){
-            listener.hitPlayer(player);
-            remainingBounces = -1;
+        if (hitPlayer){
+            listener.hurtPlayer(player, 1);
+            return Status.DEAD_NOT_PREDICTABLE;
         }
         if (remainingBounces >= 0) texture.addPoint(position);
 
-    }
-
-    public boolean isDead() {
-        return remainingBounces < 0;
+        else return Status.DEAD_PREDICTABLE;
+        return Status.ALIVE;
     }
 
     @Override

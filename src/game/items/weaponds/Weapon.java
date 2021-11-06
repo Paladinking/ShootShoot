@@ -1,7 +1,7 @@
 package game.items.weaponds;
 
-import game.events.ProjectileCreated;
 import game.listeners.GameEventHandler;
+import game.sound.Sound;
 import game.tiles.TileMap;
 
 import javax.vecmath.Vector2d;
@@ -9,29 +9,27 @@ import java.awt.*;
 
 public abstract class Weapon {
 
-     protected final int maxDelay, radius, projectileSpeed;
+     protected final int maxDelay;
+
+     private final Sound soundEffect;
 
      private int delay;
 
-     protected Weapon(int maxDelay, int radius, int bulletSpeed){
-          this.radius = radius;
+     protected Weapon(int maxDelay, Sound soundEffect){
           this.maxDelay = maxDelay;
-          this.projectileSpeed = bulletSpeed;
+          this.soundEffect = soundEffect;
           this.delay = 0;
      }
 
-
-     protected void createProjectile(GameEventHandler handler, TileMap tileMap, Vector2d source, Vector2d projectileVector, int type){
-          Vector2d bulletPos = new Vector2d(source);
-          bulletPos.add(new Vector2d(projectileVector.x * (radius + 1), projectileVector.y * (radius + 1)));
-          if (tileMap.isOpen(bulletPos)) {
-               projectileVector.scale(projectileSpeed);
-               handler.addEvent(new ProjectileCreated(bulletPos.x, bulletPos.y, projectileVector.x, projectileVector.y, type));
+     public void tryUse(GameEventHandler handler, TileMap tileMap, Vector2d source, Point destination){
+          if (isReady()) {
+               use(handler, tileMap, source, destination);
+               soundEffect.play();
+               setDelay();
           }
      }
 
-
-     public abstract void use(GameEventHandler handler, TileMap tileMap, Vector2d source, Point destination);
+     protected abstract void use(GameEventHandler handler, TileMap tileMap, Vector2d source, Point destination);
 
      protected void setDelay(){
           this.delay = maxDelay;
@@ -45,7 +43,7 @@ public abstract class Weapon {
           if (delay > 0) delay--;
      }
 
-     public double getShootDelayFraction(){
+     public double getDelayFraction(){
           return ((double) delay) / maxDelay;
      }
 }

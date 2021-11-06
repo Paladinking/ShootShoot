@@ -2,10 +2,8 @@ package game;
 
 import game.client.GameClient;
 import game.entities.Player;
-import game.entities.projectiles.Bullet;
 import game.entities.LocalPlayer;
 import game.entities.projectiles.Projectile;
-import game.entities.projectiles.Rocket;
 import game.events.GameEvent;
 import game.events.PlayerChangedAngle;
 import game.events.PlayerHurt;
@@ -87,6 +85,7 @@ public class Game implements KeyListener, MouseMotionListener, ProjectileListene
         keyMap.put(KeyEvent.VK_A, false);
         keyMap.put(KeyEvent.VK_S, false);
         keyMap.put(KeyEvent.VK_D, false);
+        keyMap.put(KeyEvent.VK_Q, false);
         keyMap.put(KeyEvent.VK_SPACE, false);
         keyMap.put(KeyEvent.VK_SHIFT, false);
         keyMap.put(KeyEvent.VK_1, false);
@@ -109,7 +108,7 @@ public class Game implements KeyListener, MouseMotionListener, ProjectileListene
         client.init();
         client.startReaderThread();
         textures.add(new StartupCounter(width / 2 * TILE_SIZE, height / 2 * TILE_SIZE, startUpTicks + startUpTicks / 3));
-        tickFuture = executor.scheduleAtFixedRate(()->{
+        tickFuture = executor.scheduleAtFixedRate(() -> {
             this.tick();
             EventQueue.invokeLater(gamePanel::repaint);
         }, 16, 16, TimeUnit.MILLISECONDS);
@@ -135,10 +134,16 @@ public class Game implements KeyListener, MouseMotionListener, ProjectileListene
     }
 
     @Override
-    public void hitPlayer(LocalPlayer player) {
-        player.hurt(1);
+    public void hurtPlayer(LocalPlayer player, int amount) {
+        if (player.isDead() || player.isInvincible()) return;
+        player.hurt(amount);
         client.addEvent(new PlayerHurt(1));
         if (player.isDead()) client.addEvent(GameEvent.playerDied());
+    }
+
+    @Override
+    public void createEvent(GameEvent event) {
+        client.addEvent(event);
     }
 
     public void tick() {
@@ -158,10 +163,22 @@ public class Game implements KeyListener, MouseMotionListener, ProjectileListene
             while (it.hasNext()) {
                 Map.Entry<Integer, Projectile> entry = it.next();
                 Projectile projectile = entry.getValue();
-                projectile.tick(tileMap, localPlayer);
-                if (projectile.isDead()) {
-                    it.remove();
-                    client.addEvent(new ProjectileRemoved(entry.getKey()));
+                Projectile.Status status = projectile.tick(tileMap, localPlayer, entry.getKey());
+                if (status != Projectile.Status.ALIVE) {
+                    switch (status) {
+                        case DEAD_NOT_PREDICTABLE:
+                            client.addEvent(new ProjectileRemoved(entry.getKey()));
+                        case DEAD_PREDICTABLE:
+                            it.remove();
+                            break;
+                        case REPLACED:
+                            Projectile newValue = projectile.getReplacement();
+                            entry.setValue(newValue);
+                            synchronized (textureLock) {
+                                textures.add(newValue.getTexture());
+                            }
+                            break;
+                    }
                 }
             }
         } else {
@@ -214,21 +231,21 @@ public class Game implements KeyListener, MouseMotionListener, ProjectileListene
 
 
     public void createProjectile(double x, double y, double dx, double dy, int type, int index, int source) {
-        Projectile projectile;
-        if (Projectile.isBullet(type)) {
-            projectile = new Bullet(x, y, dx, dy, type, source, this);
-        } else if (Projectile.isRocket(type)) {
-            projectile = new Rocket(x, y, dx, dy);
-        } else {
-            projectile = new Bullet(x, y, dx, dy, 0, source, this);
-        }
+        Projectile projectile = Projectile.getProjectile(x, y, dx, dy, type, source, this);
         projectiles.put(index, projectile);
-        textures.add(projectile.getTexture());
+        synchronized (textureLock) {
+            textures.add(projectile.getTexture());
+        }
 
     }
 
     public void removeProjectile(int index) {
         projectiles.remove(index);
+    }
+
+
+    public void affectProjectile(int id) {
+        projectiles.get(id).projectileEvent();
     }
 
     public void hurtPlayer(int amount, int source) {
@@ -311,4 +328,5 @@ public class Game implements KeyListener, MouseMotionListener, ProjectileListene
     public void keyTyped(KeyEvent e) {
 
     }
+
 }
