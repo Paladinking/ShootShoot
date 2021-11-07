@@ -1,6 +1,6 @@
 package game.entities;
 
-import game.listeners.GameEventHandler;
+import game.listeners.GameObjectHandler;
 import game.textures.PlayerTexture;
 import game.textures.Texture;
 import game.tiles.TileMap;
@@ -30,7 +30,7 @@ public class Player {
         this.hp = START_HP;
     }
 
-    public void tick(TileMap tileMap, Map<Integer, Boolean> keyMap, Point mousePos, GameEventHandler handler){
+    public void tick(TileMap tileMap, Map<Integer, Boolean> keyMap, Point mousePos, GameObjectHandler handler){
         if (hurtTicks > 0) {
             hurtTicks--;
             if (hurtTicks == 0) texture.setState(PlayerTexture.State.NORMAL);

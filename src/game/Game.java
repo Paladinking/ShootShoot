@@ -8,8 +8,8 @@ import game.events.GameEvent;
 import game.events.PlayerChangedAngle;
 import game.events.PlayerHurt;
 import game.events.ProjectileRemoved;
-import game.listeners.GameEventHandler;
-import game.listeners.ProjectileListener;
+import game.listeners.GameObjectHandler;
+import game.sound.Sound;
 import game.textures.StartupCounter;
 import game.textures.Texture;
 import game.tiles.Level;
@@ -29,7 +29,7 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
-public class Game implements KeyListener, MouseMotionListener, ProjectileListener, GameEventHandler {
+public class Game implements KeyListener, MouseMotionListener, GameObjectHandler {
 
     public static final int WIDTH = 96, HEIGHT = 50, TILE_SIZE = 20;
 
@@ -42,6 +42,8 @@ public class Game implements KeyListener, MouseMotionListener, ProjectileListene
     private final double scalingFactor;
 
     private final Level[] levels;
+
+    private final Sound[] sounds;
 
     private final Map<Integer, Boolean> keyMap;
 
@@ -64,7 +66,7 @@ public class Game implements KeyListener, MouseMotionListener, ProjectileListene
     private final Queue<GameEvent> events;
     private GamePanel panel;
 
-    public Game(int width, int height, int pixelWidth, int pixelHeight, Level[] levels) {
+    public Game(int width, int height, int pixelWidth, int pixelHeight, Level[] levels, Sound[] sounds) {
         this.width = width;
         this.height = height;
         this.scalingFactor = pixelWidth / ((double) width * TILE_SIZE);
@@ -76,6 +78,7 @@ public class Game implements KeyListener, MouseMotionListener, ProjectileListene
         this.events = new ArrayDeque<>(INITIAL_EVENT_CAPACITY);
         this.tileMap = new TileMap(0, 0);
         this.levels = levels;
+        this.sounds = sounds;
         initKeys();
     }
 
@@ -109,7 +112,12 @@ public class Game implements KeyListener, MouseMotionListener, ProjectileListene
         client.startReaderThread();
         textures.add(new StartupCounter(width / 2 * TILE_SIZE, height / 2 * TILE_SIZE, startUpTicks + startUpTicks / 3));
         tickFuture = executor.scheduleAtFixedRate(() -> {
-            this.tick();
+            try {
+                this.tick();
+            } catch (Exception e){
+                e.printStackTrace();
+                throw e;
+            }
             EventQueue.invokeLater(gamePanel::repaint);
         }, 16, 16, TimeUnit.MILLISECONDS);
     }
@@ -156,7 +164,7 @@ public class Game implements KeyListener, MouseMotionListener, ProjectileListene
         if (startUpTicks == 0) {
             synchronized (localEventLock) {
                 for (Player p : players) {
-                    p.tick(tileMap, keyMap, mousePos, client);
+                    p.tick(tileMap, keyMap, mousePos, this);
                 }
             }
             Iterator<Map.Entry<Integer, Projectile>> it = projectiles.entrySet().iterator();
@@ -170,6 +178,7 @@ public class Game implements KeyListener, MouseMotionListener, ProjectileListene
                             client.addEvent(new ProjectileRemoved(entry.getKey()));
                         case DEAD_PREDICTABLE:
                             it.remove();
+                            projectile.removed();
                             break;
                         case REPLACED:
                             Projectile newValue = projectile.getReplacement();
@@ -240,12 +249,12 @@ public class Game implements KeyListener, MouseMotionListener, ProjectileListene
     }
 
     public void removeProjectile(int index) {
-        projectiles.remove(index);
+        projectiles.remove(index).removed();
     }
 
 
     public void affectProjectile(int id) {
-        projectiles.get(id).projectileEvent();
+        projectiles.get(id).projectileEvent(id);
     }
 
     public void hurtPlayer(int amount, int source) {
@@ -282,6 +291,16 @@ public class Game implements KeyListener, MouseMotionListener, ProjectileListene
         synchronized (eventLock) {
             events.add(event);
         }
+    }
+
+    @Override
+    public void playSound(int sound) {
+        if (sound != -1) sounds[sound].play();
+    }
+
+    @Override
+    public LocalPlayer getPlayer() {
+        return localPlayer;
     }
 
     @Override

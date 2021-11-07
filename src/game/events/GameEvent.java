@@ -3,7 +3,6 @@ package game.events;
 import game.Game;
 import game.server.PlayerHandler;
 
-import javax.xml.crypto.Data;
 import java.io.DataInput;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
@@ -11,7 +10,7 @@ import java.io.IOException;
 
 public abstract class GameEvent {
 
-    private static final byte TOTAL_EVENTS = 8;
+    private static final byte TOTAL_EVENTS = 11;
 
     protected static final byte
             PROJECTILE_CREATED = 0,
@@ -21,7 +20,9 @@ public abstract class GameEvent {
             PLAYER_DIED = 4,
             PLAYER_CHANGED_ANGLE = 6,
             NEW_GAME_READY = 5,
-            PROJECTILE_EVENT = 7;
+            PROJECTILE_EVENT = 7,
+            SOUND_PLAYED = 9,
+            TELEPORTER_USED = 10;
 
     private static final EventReader[] readers = new EventReader[TOTAL_EVENTS];
 
@@ -37,7 +38,8 @@ public abstract class GameEvent {
         };
         readers[PROJECTILE_REMOVED] = in -> {
             int index = in.readInt();
-            return new ProjectileRemoved(index);
+            boolean propagateBack = in.readBoolean();
+            return new ProjectileRemoved(index, propagateBack);
         };
         readers[PLAYER_HURT] = in -> {
             int amount = in.readInt();
@@ -59,6 +61,10 @@ public abstract class GameEvent {
             int id = in.readInt();
             return new ProjectileEvent(id);
         };
+        readers[SOUND_PLAYED] = in -> {
+            int id = in.readInt();
+            return new SoundPlayed(id);
+        };
     }
 
     protected final int type;
@@ -79,6 +85,7 @@ public abstract class GameEvent {
         return read2(type, in);
     }
 
+    @Deprecated
     public static GameEvent read1(int type, DataInput in) throws IOException {
         return readers[type].read(in);
     }
@@ -96,7 +103,8 @@ public abstract class GameEvent {
             }
             case PROJECTILE_REMOVED -> {
                 int index = in.readInt();
-                return new ProjectileRemoved(index);
+                boolean propagateBack = in.readBoolean();
+                return new ProjectileRemoved(index, propagateBack);
             }
             case PLAYER_HURT -> {
                 int amount = in.readInt();
@@ -122,7 +130,16 @@ public abstract class GameEvent {
                 int id = in.readInt();
                 return new ProjectileEvent(id);
             }
-            default -> throw new IOException();
+            case SOUND_PLAYED -> {
+                int id = in.readInt();
+                return new SoundPlayed(id);
+            }
+            case TELEPORTER_USED -> {
+                double x = in.readDouble();
+                double y = in.readDouble();
+                return new TeleporterPlaced(x, y);
+            }
+            default -> throw new IOException(""+t);
         }
     }
 
@@ -133,8 +150,8 @@ public abstract class GameEvent {
 
     public abstract void execute(Game game);
 
-    public void handle(PlayerHandler handler) {
-
+    public boolean handle(PlayerHandler handler) {
+        return true;
     }
 
     protected interface EventReader {
@@ -144,8 +161,9 @@ public abstract class GameEvent {
     public static GameEvent playerDied() {
         return new EmptyEvent(PLAYER_DIED) {
             @Override
-            public void handle(PlayerHandler handler) {
+            public boolean handle(PlayerHandler handler) {
                 handler.died();
+                return false;
             }
         };
     }
@@ -153,8 +171,9 @@ public abstract class GameEvent {
     public static GameEvent newGameReady() {
         return new EmptyEvent(NEW_GAME_READY) {
             @Override
-            public void handle(PlayerHandler handler) {
+            public boolean handle(PlayerHandler handler) {
                 handler.stopReaderThread();
+                return false;
             }
         };
     }

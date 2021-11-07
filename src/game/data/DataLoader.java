@@ -1,9 +1,11 @@
 package game.data;
 
 import game.Game;
+import game.sound.Sound;
 import game.tiles.Level;
 
 import javax.imageio.ImageIO;
+import javax.sound.sampled.UnsupportedAudioFileException;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 
@@ -21,6 +23,14 @@ public class DataLoader {
             if (image.getWidth() != Game.WIDTH || image.getHeight() != Game.HEIGHT) throw new IOException("Bad level size");
             levels[i] = new Level(image);
         }
+        for (int i = 0; i < SOUND_NAMES.length; i++){
+            try {
+                Sound sound = new Sound(ClassLoader.getSystemResourceAsStream(soundPath + SOUND_NAMES[i]));
+                sounds[i] = sound;
+            } catch (UnsupportedAudioFileException e){
+                throw new IOException(e);
+            }
+        }
     }
     public int getLevelWidth() {
         return Game.WIDTH;
@@ -32,5 +42,15 @@ public class DataLoader {
 
     public Level[] getLevels() {
         return levels;
+    }
+
+    private static final String soundPath = "sounds/";
+
+    private final static String[] SOUND_NAMES = new String[]{"minePlace.wav", "punsh.wav", "short-explosion.wav"};
+
+    private final Sound[] sounds = new Sound[SOUND_NAMES.length];
+
+    public Sound[] getSounds() {
+        return sounds;
     }
 }

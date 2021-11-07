@@ -9,6 +9,8 @@ import java.util.concurrent.Executors;
 
 public class Sound {
 
+    public static final int MINE_PLACE = 0, SNIPER = 1, EXPLOSION = 2;
+
     private final static ExecutorService executorService = Executors.newCachedThreadPool();
 
     private final byte[] bytes;
@@ -58,7 +60,6 @@ public class Sound {
 
                 sourceLine.drain();
                 sourceLine.close();
-                soundData.close();
                 audioInputStream.close();
 
             } catch (IOException e) {

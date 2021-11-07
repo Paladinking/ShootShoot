@@ -56,11 +56,13 @@ public class PlayerHandler {
                 int totalEvents = in.readInt();
                 for (int i = 0; i < totalEvents; i++) {
                     GameEvent e = GameEvent.read(in);
-                    e.handle(this);
+
                     queLock.lock();
                     try {
-                        events.add(e);
-                        if (e.propagateBack) selfEvents.add(e);
+                        if(e.handle(this)) {
+                            events.add(e);
+                            if (e.propagateBack) selfEvents.add(e); //MOVE OUTSIDE POTENTIAL
+                        }
                     } finally {
                         queLock.unlock();
                     }
@@ -76,6 +78,14 @@ public class PlayerHandler {
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    public void addEvent(GameEvent event) {
+        events.add(event);
+    }
+
+    public void addSelfEvent(GameEvent event) {
+        selfEvents.add(event);
     }
 
     public void stopReaderThread() {

@@ -3,7 +3,7 @@ package game.client;
 import game.Game;
 import game.events.GameEvent;
 import game.events.ServerEvent;
-import game.listeners.GameEventHandler;
+import game.listeners.GameObjectHandler;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
@@ -12,7 +12,7 @@ import java.net.Socket;
 import java.util.ArrayDeque;
 import java.util.Queue;
 
-public class GameClient implements GameEventHandler {
+public class GameClient {
 
     private final String ip;
 
@@ -66,7 +66,7 @@ public class GameClient implements GameEventHandler {
 
     }
 
-    private void receiveData(GameEventHandler handler) throws IOException {
+    private void receiveData(GameObjectHandler handler) throws IOException {
         for (int i = 0; i < totalPlayers; i++) {
             int source = in.readInt();
             int totalEvents = in.readInt();

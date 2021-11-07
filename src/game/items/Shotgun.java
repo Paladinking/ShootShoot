@@ -1,7 +1,8 @@
-package game.items.weaponds;
+package game.items;
 
 import game.entities.projectiles.Projectile;
-import game.listeners.GameEventHandler;
+import game.listeners.GameObjectHandler;
+import game.sound.Sound;
 import game.tiles.TileMap;
 
 import javax.vecmath.Vector2d;
@@ -16,7 +17,7 @@ public class Shotgun extends Gun {
     private final int numberOfShots;
 
     public Shotgun(int maxDelay, int radius, int bulletSpeed, int numberOfShots) {
-        super(maxDelay, radius, bulletSpeed, Sniper.sound);
+        super(maxDelay, radius, bulletSpeed, Sound.SNIPER);
         this.numberOfShots = numberOfShots;
     }
 
@@ -27,7 +28,7 @@ public class Shotgun extends Gun {
     }
 
     @Override
-    protected void use(GameEventHandler handler, TileMap tileMap, Vector2d source, Point destination) {
+    protected void use(GameObjectHandler handler, TileMap tileMap, Vector2d source, Point destination) {
         Vector2d bulletVector = new Vector2d(destination.x - source.x, destination.y - source.y);
         bulletVector.normalize();
         for (int i = 0; i < numberOfShots; i++) {

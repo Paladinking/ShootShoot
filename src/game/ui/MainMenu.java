@@ -3,6 +3,7 @@ package game.ui;
 import game.Game;
 import game.data.DataLoader;
 import game.server.Server;
+import game.sound.Sound;
 import game.tiles.Level;
 
 import javax.swing.*;
@@ -45,8 +46,9 @@ public class MainMenu {
             ioException.printStackTrace();
         }
         Level[] levels = loader.getLevels();
+        Sound[] sounds = loader.getSounds();
         int levelWidth = loader.getLevelWidth(), levelHeight = loader.getLevelHeight();
-        Game game = new Game(levelWidth, levelHeight, screenSize.width, screenSize.height, levels);
+        Game game = new Game(levelWidth, levelHeight, screenSize.width, screenSize.height, levels, sounds);
         levelSelector = new LevelSelector(levelWidth, levelHeight, levels);
         levelSelector.setPreferredSize(screenSize);
         waitingComponent = new JComponent() {

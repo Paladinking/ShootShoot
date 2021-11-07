@@ -43,7 +43,8 @@ public class ProjectileCreated extends GameEvent {
     }
 
     @Override
-    public void handle(PlayerHandler handler) {
+    public boolean handle(PlayerHandler handler) {
         this.index = PlayerHandler.getBulletIndex();
+        return true;
     }
 }

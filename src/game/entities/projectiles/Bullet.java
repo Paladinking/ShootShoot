@@ -1,10 +1,10 @@
 package game.entities.projectiles;
 
 import game.entities.LocalPlayer;
+import game.listeners.GameObjectHandler;
 import game.textures.BulletTexture;
 import game.textures.Texture;
 import game.tiles.TileMap;
-import game.listeners.ProjectileListener;
 
 import javax.vecmath.Vector2d;
 
@@ -14,14 +14,17 @@ public class Bullet extends Projectile {
 
     private final BulletTexture texture;
 
-    public Bullet(Vector2d position, Vector2d velocity, int bounces, int source, ProjectileListener listener) {
-        super(position, velocity, listener);
+    private final int source;
+
+    public Bullet(Vector2d position, Vector2d velocity, int bounces, int source, GameObjectHandler handler) {
+        super(position, velocity, handler);
         this.remainingBounces = bounces;
+        this.source = source;
         this.texture = new BulletTexture((int)position.x, (int)position.y, source);
     }
 
-    public Bullet(double shotX, double shotY, double shotDx, double shotDy, int bounces, int source, ProjectileListener listener) {
-        this(new Vector2d(shotX, shotY), new Vector2d(shotDx, shotDy), bounces,source, listener);
+    public Bullet(double shotX, double shotY, double shotDx, double shotDy, int bounces, int source, GameObjectHandler handler) {
+        this(new Vector2d(shotX, shotY), new Vector2d(shotDx, shotDy), bounces,source, handler);
     }
 
     @Override
@@ -65,8 +68,8 @@ public class Bullet extends Projectile {
         }
         position.set(step);
         if (bounced) remainingBounces--;
-        if (hitPlayer){
-            listener.hurtPlayer(player, 1);
+        if (hitPlayer && player.getNumber() != source){
+            handler.hurtPlayer(player, 1);
             return Status.DEAD_NOT_PREDICTABLE;
         }
         if (remainingBounces >= 0) texture.addPoint(position);

@@ -14,9 +14,15 @@ public class ProjectileRemoved extends GameEvent {
         this.index = index;
     }
 
+    public ProjectileRemoved(int index, boolean propagateBack){
+        super(PROJECTILE_REMOVED, propagateBack);
+        this.index = index;
+    }
+
     @Override
     protected void write(DataOutputStream out) throws IOException {
         out.writeInt(index);
+        out.writeBoolean(propagateBack);
     }
 
     @Override

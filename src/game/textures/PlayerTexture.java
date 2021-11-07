@@ -7,6 +7,7 @@ import javax.vecmath.Vector2d;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
+import java.net.URL;
 import java.util.*;
 import java.util.List;
 
@@ -29,14 +30,16 @@ public class PlayerTexture extends Texture {
 
     static {
         try {
-            BufferedImage image = ImageIO.read(ClassLoader.getSystemResource("images/Players.png"));
+            BufferedImage image = ImageIO.read(ClassLoader.getSystemResource("images/players.png"));
             for (int i = 0; i < 4; i++){
                 Map<State, BufferedImage> images = new EnumMap<>(State.class);
                 images.put(State.NORMAL, image.getSubimage(0, 40 * i, 40, 40));
                 images.put(State.HURT, image.getSubimage(40, 40 * i, 40, 40));
                 PLAYER_IMAGES.add(images);
             }
-        } catch (IOException ignored){}
+        } catch (IOException e){
+            e.printStackTrace();
+        }
     }
 
     private final Player player;

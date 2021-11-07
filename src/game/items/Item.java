@@ -1,35 +1,37 @@
-package game.items.weaponds;
+package game.items;
 
-import game.listeners.GameEventHandler;
+import game.events.SoundPlayed;
+import game.listeners.GameObjectHandler;
 import game.sound.Sound;
 import game.tiles.TileMap;
 
 import javax.vecmath.Vector2d;
 import java.awt.*;
 
-public abstract class Weapon {
+public abstract class Item {
 
      protected final int maxDelay;
 
-     private final Sound soundEffect;
+     private final int soundEffect;
 
      private int delay;
 
-     protected Weapon(int maxDelay, Sound soundEffect){
+     protected Item(int maxDelay, int soundEffect){
           this.maxDelay = maxDelay;
           this.soundEffect = soundEffect;
           this.delay = 0;
      }
 
-     public void tryUse(GameEventHandler handler, TileMap tileMap, Vector2d source, Point destination){
+     public void tryUse(GameObjectHandler handler, TileMap tileMap, Vector2d source, Point destination){
           if (isReady()) {
                use(handler, tileMap, source, destination);
-               soundEffect.play();
+               handler.playSound(soundEffect);
+               handler.createEvent(new SoundPlayed(soundEffect));
                setDelay();
           }
      }
 
-     protected abstract void use(GameEventHandler handler, TileMap tileMap, Vector2d source, Point destination);
+     protected abstract void use(GameObjectHandler handler, TileMap tileMap, Vector2d source, Point destination);
 
      protected void setDelay(){
           this.delay = maxDelay;
