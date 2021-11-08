@@ -4,7 +4,6 @@ import game.entities.LocalPlayer;
 import game.events.GameEvent;
 
 public interface GameObjectHandler {
-
     void hurtPlayer(LocalPlayer player, int amount);
 
     void createEvent(GameEvent event);
@@ -14,4 +13,6 @@ public interface GameObjectHandler {
     void playSound(int sound);
 
     LocalPlayer getPlayer();
+
+    boolean doFriendlyFire();
 }

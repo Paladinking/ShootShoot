@@ -33,11 +33,11 @@ public class LocalPlayer extends Player {
         this.velocity = new Vector2d(0, 0);
         this.items = new Item[]{
                 new Sniper(SHOOT_DELAY, radius, BULLET_SPEED),
-                new Shotgun(SHOOT_DELAY, radius, BULLET_SPEED / 3, SHOTGUN_SHOTS)
+                new Shotgun(SHOOT_DELAY, radius, BULLET_SPEED / 3, SHOTGUN_SHOTS),
+                new MinePlacer(SHOOT_DELAY)
         };
         this.activeItem = items[0];
-        this.sideItem = new MinePlacer(SHOOT_DELAY);
-        this.sideItem = teleporter;
+        this.sideItem = items[2];
         this.sprintEnded = false;
     }
 
@@ -65,6 +65,8 @@ public class LocalPlayer extends Player {
 
         if (keyMap.get(KeyEvent.VK_1)) activeItem = items[0];
         if (keyMap.get(KeyEvent.VK_2)) activeItem = items[1];
+        if (keyMap.get(KeyEvent.VK_3)) sideItem = items[2];
+        if (keyMap.get(KeyEvent.VK_4)) sideItem = teleporter;
         if (keyMap.get(KeyEvent.VK_SPACE)) {
             activeItem.tryUse(handler, tileMap, position, mousePos);
         }

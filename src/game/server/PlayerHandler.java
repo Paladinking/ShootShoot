@@ -119,8 +119,9 @@ public class PlayerHandler {
         }
     }
 
-    public void sendInitialData(int players, int[] startingPositions, int level) throws IOException {
+    public void sendInitialData(int players, int[] startingPositions, int level, boolean friendlyFire) throws IOException {
         out.writeInt(level);
+        out.writeBoolean(friendlyFire);
         out.writeInt(players);
         out.writeInt(number);
         for (int i = 0; i < players; i++) {

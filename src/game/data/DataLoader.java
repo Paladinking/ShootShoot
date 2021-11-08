@@ -13,15 +13,17 @@ public class DataLoader {
 
     private static final String levelPath = "images/";
 
-    private final static String[] LEVEL_IMAGE_NAMES = new String[]{"stage.png", "stage2.png"};
+    private final static String[] LEVEL_TILE_NAMES = new String[]{"stage.png", "stage2.png"};
+    private final static String[] LEVEL_IMAGE_NAMES = new String[]{"stage.png", "stage2Image.png"};
 
     private final Level[] levels = new Level[LEVEL_IMAGE_NAMES.length];
 
     public void readData() throws IOException {
         for (int i = 0; i < LEVEL_IMAGE_NAMES.length; i++) {
+            BufferedImage tiles = ImageIO.read(ClassLoader.getSystemResource(levelPath + LEVEL_TILE_NAMES[i]));
             BufferedImage image = ImageIO.read(ClassLoader.getSystemResource(levelPath + LEVEL_IMAGE_NAMES[i]));
-            if (image.getWidth() != Game.WIDTH || image.getHeight() != Game.HEIGHT) throw new IOException("Bad level size");
-            levels[i] = new Level(image);
+            if (tiles.getWidth() != Game.WIDTH || tiles.getHeight() != Game.HEIGHT) throw new IOException("Bad level size");
+            levels[i] = new Level(image, tiles);
         }
         for (int i = 0; i < SOUND_NAMES.length; i++){
             try {

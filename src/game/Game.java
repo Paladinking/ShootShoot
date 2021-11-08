@@ -59,6 +59,8 @@ public class Game implements KeyListener, MouseMotionListener, GameObjectHandler
 
     private TileMap tileMap;
 
+    boolean friendlyFire;
+
     private int startUpTicks;
 
     private final Point mousePos;
@@ -93,6 +95,8 @@ public class Game implements KeyListener, MouseMotionListener, GameObjectHandler
         keyMap.put(KeyEvent.VK_SHIFT, false);
         keyMap.put(KeyEvent.VK_1, false);
         keyMap.put(KeyEvent.VK_2, false);
+        keyMap.put(KeyEvent.VK_3, false);
+        keyMap.put(KeyEvent.VK_4, false);
     }
 
     public void connect(String ip, int port) throws IOException {
@@ -100,9 +104,10 @@ public class Game implements KeyListener, MouseMotionListener, GameObjectHandler
         client.connect();
     }
 
-    public void setLevel(int level) {
+    public void setOptions(int level, boolean friendlyFire) {
         this.tileMap = levels[level].getTileMap();
         this.tileMap.setTileSize(TILE_SIZE);
+        this.friendlyFire = friendlyFire;
     }
 
     public void start(GamePanel gamePanel) {
@@ -147,6 +152,11 @@ public class Game implements KeyListener, MouseMotionListener, GameObjectHandler
         player.hurt(amount);
         client.addEvent(new PlayerHurt(1));
         if (player.isDead()) client.addEvent(GameEvent.playerDied());
+    }
+
+    @Override
+    public boolean doFriendlyFire() {
+        return friendlyFire;
     }
 
     @Override

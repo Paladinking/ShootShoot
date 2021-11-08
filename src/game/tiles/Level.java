@@ -4,10 +4,11 @@ import java.awt.image.BufferedImage;
 
 public class Level {
 
-    private final BufferedImage image;
+    private final BufferedImage image, tileImage;
 
-    public Level(BufferedImage image) {
+    public Level(BufferedImage image, BufferedImage tileImage) {
         this.image = image;
+        this.tileImage = tileImage;
     }
 
     public BufferedImage getImage(){
@@ -15,9 +16,10 @@ public class Level {
     }
 
     public TileMap getTileMap() {
-        int w = image.getWidth(), h = image.getHeight();
+        int w = tileImage.getWidth(), h = tileImage.getHeight();
         TileMap tileMap = new TileMap(w,h);
-        tileMap.readFromImage(image);
+        tileMap.readFromImage(tileImage);
+        tileMap.setImage(image);
         return tileMap;
     }
 }

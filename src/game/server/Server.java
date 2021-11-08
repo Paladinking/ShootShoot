@@ -16,7 +16,9 @@ public class Server {
 
     private volatile boolean ready = false;
 
-    private static final int PLAYERS = 1, TIMEOUT_MILLIS = 5000;
+    private static final int TIMEOUT_MILLIS = 5000;
+
+    private final int players;
 
     private final int[] startingPositions = new int[]{100, 100, 1820, 100, 100, 900, 1820, 900};
 
@@ -26,13 +28,15 @@ public class Server {
 
     private volatile int livingPlayers, level;
 
-    private volatile boolean restart = false;
+    private volatile boolean restart = false, friendlyFire;
 
-    public Server() {
+    public Server(int players) {
+        this.players = players;
     }
 
-    public void setLevel(int level) {
+    public void setOptions(int level, boolean friendlyFire) {
         this.level = level;
+        this.friendlyFire = friendlyFire;
     }
 
     public void open(int port) throws IOException {
@@ -41,7 +45,7 @@ public class Server {
         synchronized (this) {
             notify();
         }
-        while (playerHandlers.size() < PLAYERS) {
+        while (playerHandlers.size() < players) {
             Socket socket = serverSocket.accept();
             socket.setTcpNoDelay(true);
             socket.setSoTimeout(TIMEOUT_MILLIS);
@@ -50,7 +54,7 @@ public class Server {
         }
         livingPlayers = playerHandlers.size();
         for (PlayerHandler handler : playerHandlers) {
-            handler.sendInitialData(PLAYERS, startingPositions, level);
+            handler.sendInitialData(players, startingPositions, level, friendlyFire);
             handler.start();
         }
         start();
@@ -119,7 +123,7 @@ public class Server {
                         livingPlayers = playerHandlers.size();
                         serverEvents.clear();
                         for (PlayerHandler handler : playerHandlers) {
-                            handler.sendInitialData(playerHandlers.size(), startingPositions, level);
+                            handler.sendInitialData(playerHandlers.size(), startingPositions, level, friendlyFire);
                             handler.start();
                         }
 
@@ -141,7 +145,7 @@ public class Server {
     public void playerDied() {
         synchronized (this) {
             livingPlayers--;
-            if (livingPlayers == 1 || PLAYERS == 1) {
+            if (livingPlayers == 1 || players == 1) {
                 serverEvents.add(new ServerEvent.NewGame());
                 restart = true;
             }

@@ -2,6 +2,7 @@ package game.entities.projectiles;
 
 import game.entities.LocalPlayer;
 import game.listeners.GameObjectHandler;
+import game.textures.AnimationTexture;
 import game.textures.MineTexture;
 import game.textures.Texture;
 import game.tiles.TileMap;
@@ -12,10 +13,10 @@ public class TeleportPlatform extends Projectile {
 
     protected TeleportPlatform(double x, double y, GameObjectHandler handler) {
         super(new Vector2d(x, y), new Vector2d(0, 0), handler);
-        this.texture = new MineTexture((int)x, (int)y);
+        this.texture = Texture.teleporterTexture(x, y);
     }
 
-    private final MineTexture texture;
+    private final AnimationTexture texture;
 
     @Override
     public Status tick(TileMap tileMap, LocalPlayer player, int id) {
@@ -29,7 +30,7 @@ public class TeleportPlatform extends Projectile {
 
     @Override
     public void removed(){
-        texture.setState(MineTexture.State.EXPLODED);
+        texture.remove();
     }
 
     @Override

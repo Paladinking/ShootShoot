@@ -68,7 +68,7 @@ public class Bullet extends Projectile {
         }
         position.set(step);
         if (bounced) remainingBounces--;
-        if (hitPlayer && player.getNumber() != source){
+        if (hitPlayer && (handler.doFriendlyFire() || source != player.getNumber())) {
             handler.hurtPlayer(player, 1);
             return Status.DEAD_NOT_PREDICTABLE;
         }

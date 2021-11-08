@@ -17,12 +17,18 @@ public class TileMap {
         }
     }
 
+    private BufferedImage image;
+
     public int getTileSize() {
         return tileSize;
     }
 
     public boolean isOpen(Vector2d nextPosition) {
         return isOpen(((int) nextPosition.x) / tileSize, ((int) nextPosition.y) / tileSize);
+    }
+
+    public void setImage(BufferedImage image) {
+        this.image = image;
     }
 
     private enum TileType {
@@ -39,25 +45,17 @@ public class TileMap {
 
 
     public void draw(Graphics2D g) {
-        for (int y = 0; y < tiles.length; y++) {
-            for (int x = 0; x < tiles[0].length; x++) {
-                Color c = switch (tiles[y][x]) {
-                    case EMPTY -> Color.WHITE;
-                    case WALL -> Color.BLACK;
-                };
-                g.setColor(c);
-                g.fillRect(x * tileSize, y * tileSize, tileSize, tileSize);
-            }
-        }
+        g.drawImage(image, 0, 0, tiles[0].length * tileSize, tiles.length * tileSize, null);
     }
 
     public void readFromImage(BufferedImage image) {
+        final int wallColor = 0xff000000, emptyColor = 0xffffffff;
         for (int y = 0; y < tiles.length; y++) {
             for (int x = 0; x < tiles[0].length; x++) {
                 int pixel = image.getRGB(x, y);
                 switch (pixel) {
-                    case 0xff000000 -> tiles[y][x] = TileType.WALL;
-                    case 0xffffffff -> tiles[y][x] = TileType.EMPTY;
+                    case wallColor -> tiles[y][x] = TileType.WALL;
+                    case emptyColor -> tiles[y][x] = TileType.EMPTY;
                     default -> System.out.println(Integer.toHexString(pixel));
                 }
             }
@@ -72,10 +70,26 @@ public class TileMap {
         for (int i = 0; i < 40; i++) {
             List<Point> intersects = allIntersects(nextPosition, radius);
             if (intersects.size() == 0) return;
-            Vector2d overlap = getAverageOverlapVector(nextPosition, radius, intersects);
-            if (Double.isNaN(overlap.x)) return; // Should never happen but just in case...
+            Vector2d overlap;
+            if (isStraightWall(intersects)) overlap = getLargestOverlapVector(nextPosition, radius, intersects);
+            else overlap = getAverageOverlapVector(nextPosition, radius, intersects);
+            if (Double.isNaN(overlap.x)) return;// Should never happen but just in case...
             nextPosition.add(overlap);
         }
+    }
+
+    private boolean isStraightWall(List<Point> intersects) {
+        if (intersects.size() == 2) {
+            Point p1 = intersects.get(0);
+            Point p2 = intersects.get(1);
+            return (p1.x == p2.x && Math.abs(p1.y - p2.y) == 1) || (p1.y == p2.y && Math.abs(p1.x - p2.x) == 1);
+        } else if (intersects.size() == 3) {
+            Point p1 = intersects.get(0);
+            Point p2 = intersects.get(1);
+            Point p3 = intersects.get(2);
+            return (p1.x == p2.x && p2.x == p3.x) || (p1.y == p2.y && p2.y == p3.y);
+        }
+        return false;
     }
 
     private List<Point> allIntersects(Vector2d pos, int radius) {
@@ -104,6 +118,22 @@ public class TileMap {
         }
         average.scale(1.0 / points.size());
         return average;
+    }
+
+    private Vector2d getLargestOverlapVector(Vector2d pos, int radius, List<Point> points) {
+        double largestOverlap = 0;
+        Vector2d largest = new Vector2d(0, 0);
+        for (Point p : points) {
+            Vector2d vector = getRayToNearest(pos, p);
+            double overlap = radius - vector.length();
+            if (overlap > largestOverlap) {
+                largestOverlap = overlap;
+                largest = vector;
+            }
+        }
+        largest.normalize();
+        largest.scale(-largestOverlap);
+        return largest;
     }
 
     private Vector2d getOverlapVector(Vector2d pos, int radius, Point point) {

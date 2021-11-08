@@ -53,13 +53,14 @@ public class GameClient {
     public void init() {
         try {
             int level = in.readInt();
+            boolean friendlyFire = in.readBoolean();
             totalPlayers = in.readInt();
             int playerNumber = in.readInt();
             for (int i = 0; i < totalPlayers; i++) {
                 int x = in.readInt(), y = in.readInt();
                 game.createPlayer(x, y, i, i == playerNumber);
             }
-            game.setLevel(level);
+            game.setOptions(level, friendlyFire);
         } catch (IOException e) {
             e.printStackTrace();
         }
