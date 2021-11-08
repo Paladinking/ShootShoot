@@ -4,6 +4,8 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
+
+@SuppressWarnings("unused")
 public class JsonList implements JsonParsable, Iterable<Object> {
 
     private final List<Object> content;

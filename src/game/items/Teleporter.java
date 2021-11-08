@@ -22,7 +22,7 @@ public class Teleporter extends Item {
     }
 
     @Override
-    protected void use(GameObjectHandler handler, TileMap tileMap, Vector2d source, Point destination) {
+    protected void use(GameObjectHandler handler, TileMap tileMap, Vector2d source, Point destination, int radius) {
         if (deployed){
             if (x != -1) {
                 handler.getPlayer().teleport(handler, x, y);

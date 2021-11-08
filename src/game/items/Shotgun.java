@@ -16,8 +16,8 @@ public class Shotgun extends Gun {
 
     private final int numberOfShots;
 
-    public Shotgun(int maxDelay, int radius, int bulletSpeed, int numberOfShots) {
-        super(maxDelay, radius, bulletSpeed, Sound.SNIPER);
+    public Shotgun(int maxDelay, int bulletSpeed, int numberOfShots) {
+        super(maxDelay, bulletSpeed, Sound.SNIPER);
         this.numberOfShots = numberOfShots;
     }
 
@@ -28,14 +28,14 @@ public class Shotgun extends Gun {
     }
 
     @Override
-    protected void use(GameObjectHandler handler, TileMap tileMap, Vector2d source, Point destination) {
+    protected void use(GameObjectHandler handler, TileMap tileMap, Vector2d source, Point destination, int radius) {
         Vector2d bulletVector = new Vector2d(destination.x - source.x, destination.y - source.y);
         bulletVector.normalize();
         for (int i = 0; i < numberOfShots; i++) {
             Vector2d bulletVel = new Vector2d(bulletVector);
             //noinspection IntegerDivisionInFloatingPointContext
             rotate(bulletVel, (i - (numberOfShots / 2)) * SHOT_ANGLE);
-            createProjectile(handler, tileMap, source, bulletVel, Projectile.getDataProjectile(BOUNCES, Projectile.BULLET));
+            createProjectile(handler, tileMap, source, bulletVel, Projectile.getDataProjectile(BOUNCES, Projectile.BULLET), radius);
         }
     }
 }

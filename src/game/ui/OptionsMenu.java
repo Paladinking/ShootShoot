@@ -38,7 +38,7 @@ public class OptionsMenu extends JPanel {
         players = optionsObject.getInt("Players");
         JRadioButton[] jRadioButtons = new JRadioButton[4];
         for (int i = 1; i < 5; i++) {
-            JRadioButton button = new JRadioButton("" + i);
+            JRadioButton button = new JRadioButton(String.valueOf(i));
             final int index = i;
             button.addActionListener((e) -> players = index);
             jRadioButtons[i - 1] = button;
@@ -48,7 +48,7 @@ public class OptionsMenu extends JPanel {
         }
 
         add(new JLabel("Port:"), new GridConstraints(16, 10, 2, 1));
-        JTextField defaultPort = new JTextField("" + optionsObject.getInt("Port"), 6);
+        JTextField defaultPort = new JTextField(String.valueOf(optionsObject.getInt("Port")), 6);
         ((AbstractDocument) defaultPort.getDocument()).setDocumentFilter(new NumberFilter(65535));
         add(defaultPort, new GridConstraints(19, 10, 3, 1));
 
@@ -82,7 +82,7 @@ public class OptionsMenu extends JPanel {
         reset.addActionListener((e)-> {
             players = optionsObject.getInt("Players");
             jRadioButtons[players - 1].setSelected(true);
-            defaultPort.setText("" + optionsObject.getInt("Port"));
+            defaultPort.setText(Integer.toString(optionsObject.getInt("Port")));
             defaultIp.setText(optionsObject.getString("Ip"));
             friendlyFire.setSelected(optionsObject.getBoolean("FriendlyFire"));
         });
@@ -138,7 +138,7 @@ public class OptionsMenu extends JPanel {
             String oldText = fb.getDocument().getText(0, documentLength);
             String fullText = oldText.substring(0, offset) + text + oldText.substring(offset + length);
             if (!fullText.equals("") && Integer.parseInt(fullText) > maxValue) {
-                super.replace(fb, 0, documentLength, "" + maxValue, attrs);
+                super.replace(fb, 0, documentLength, Integer.toString(maxValue), attrs);
             } else {
                 super.replace(fb, offset, length, text, attrs);
             }

@@ -8,6 +8,7 @@ import game.events.GameEvent;
 import game.events.PlayerChangedAngle;
 import game.events.PlayerHurt;
 import game.events.ProjectileRemoved;
+import game.items.ItemSet;
 import game.listeners.GameObjectHandler;
 import game.sound.Sound;
 import game.textures.StartupCounter;
@@ -22,6 +23,7 @@ import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseMotionListener;
+import java.awt.image.BufferedImage;
 import java.io.*;
 import java.util.*;
 import java.util.List;
@@ -119,7 +121,7 @@ public class Game implements KeyListener, MouseMotionListener, GameObjectHandler
         tickFuture = executor.scheduleAtFixedRate(() -> {
             try {
                 this.tick();
-            } catch (Exception e){
+            } catch (Exception e) {
                 e.printStackTrace();
                 throw e;
             }
@@ -225,13 +227,17 @@ public class Game implements KeyListener, MouseMotionListener, GameObjectHandler
         g.scale(scalingFactor, scalingFactor);
 
         tileMap.draw(g);
-        double hpFraction, staminaFraction, shootDelayFraction;
+        final double hpFraction, staminaFraction, primaryShootDelayFraction, secondaryShootDelayFraction;
         synchronized (textureLock) {
             for (Texture texture : textures) texture.draw(g);
-            hpFraction = localPlayer.getHpFraction();
-            staminaFraction = localPlayer.getStaminaFraction();
-            shootDelayFraction = localPlayer.getShootDelayFraction();
         }
+        hpFraction = localPlayer.getHpFraction();
+        staminaFraction = localPlayer.getStaminaFraction();
+
+        final ItemSet items = localPlayer.getItems();
+        primaryShootDelayFraction = items.getPrimaryItem().getDelayFraction();
+        secondaryShootDelayFraction = items.getSideItem().getDelayFraction();
+
         g.setColor(Color.RED);
         g.fillRect(10, TILE_SIZE * height + 10, 200, 20);
         g.setColor(Color.GREEN);
@@ -245,7 +251,29 @@ public class Game implements KeyListener, MouseMotionListener, GameObjectHandler
         g.setColor(Color.BLACK);
         g.fillRect(480, TILE_SIZE * height + 10, 200, 20);
         g.setColor(Color.ORANGE);
-        g.fillRect(480, TILE_SIZE * height + 10, (int) (shootDelayFraction * 200), 20);
+        g.fillRect(480, TILE_SIZE * height + 10, (int) (primaryShootDelayFraction * 200), 20);
+
+        g.setColor(Color.BLACK);
+        g.fillRect(480, TILE_SIZE * height + 40, 200, 20);
+        g.setColor(Color.ORANGE);
+        g.fillRect(480, TILE_SIZE * height + 40, (int) (secondaryShootDelayFraction * 200), 20);
+
+        final int primarySelected = items.getPrimary(), secondarySelected = items.getSecondary();
+
+        g.setColor(Color.BLACK);
+        g.setStroke(new BasicStroke(1));
+        g.drawRect(745 + 60 * primarySelected, TILE_SIZE * height + 5, 60, 60);
+        g.drawRect(865 + 60 * secondarySelected, TILE_SIZE * height + 5, 60, 60);
+
+        BufferedImage[] icons = items.getIcons();
+        for (int i = 0; i < icons.length / 2; i++) {
+            g.drawImage(icons[i], 750 + 60 * i, TILE_SIZE * height + 10, 50, 50, null);
+        }
+        for (int i = icons.length / 2; i < icons.length; i++) {
+            g.drawImage(icons[i], 870 + 60 * i, TILE_SIZE * height + 10, 50, 50, null);
+        }
+
+
     }
 
 

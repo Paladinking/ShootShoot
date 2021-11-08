@@ -12,17 +12,12 @@ import java.util.Map;
 
 public class LocalPlayer extends Player {
 
-    private static final int SPEED = 3, SHOOT_DELAY = 100, MAX_STAMINA = 100, BULLET_SPEED = 100, SHOTGUN_SHOTS = 3,
-            INVINCIBILITY_TICKS = 16;
+    private static final int SPEED = 3, SHOOT_DELAY = 100, MAX_STAMINA = 100, INVINCIBILITY_TICKS = 16;
 
     private static final double FRICTION = 0.7, MINIMUM_VELOCITY = 0.05, SPRINT_FACTOR = 2.0;
     private final Vector2d velocity;
 
-    private final Item[] items;
-
-    private Item activeItem, sideItem;
-
-    private final Teleporter teleporter = new Teleporter(SHOOT_DELAY);
+    private final ItemSet items;
 
     private boolean sprintEnded;
 
@@ -31,14 +26,8 @@ public class LocalPlayer extends Player {
     public LocalPlayer(int x, int y, int diameter, int number) {
         super(x, y, diameter, number);
         this.velocity = new Vector2d(0, 0);
-        this.items = new Item[]{
-                new Sniper(SHOOT_DELAY, radius, BULLET_SPEED),
-                new Shotgun(SHOOT_DELAY, radius, BULLET_SPEED / 3, SHOTGUN_SHOTS),
-                new MinePlacer(SHOOT_DELAY)
-        };
-        this.activeItem = items[0];
-        this.sideItem = items[2];
         this.sprintEnded = false;
+        this.items = new ItemSet();
     }
 
     private void handleInputs(Map<Integer, Boolean> keyMap, Point mousePos, TileMap tileMap, GameObjectHandler handler) {
@@ -63,15 +52,15 @@ public class LocalPlayer extends Player {
         velocity.add(acceleration);
         velocity.scale(FRICTION);
 
-        if (keyMap.get(KeyEvent.VK_1)) activeItem = items[0];
-        if (keyMap.get(KeyEvent.VK_2)) activeItem = items[1];
-        if (keyMap.get(KeyEvent.VK_3)) sideItem = items[2];
-        if (keyMap.get(KeyEvent.VK_4)) sideItem = teleporter;
+        if (keyMap.get(KeyEvent.VK_1)) items.setPrimaryItem(ItemSet.SNIPER);
+        if (keyMap.get(KeyEvent.VK_2)) items.setPrimaryItem(ItemSet.SHOTGUN);
+        if (keyMap.get(KeyEvent.VK_3)) items.setSideItem(ItemSet.MINE_PLACER);
+        if (keyMap.get(KeyEvent.VK_4)) items.setSideItem(ItemSet.TELEPORTER);
         if (keyMap.get(KeyEvent.VK_SPACE)) {
-            activeItem.tryUse(handler, tileMap, position, mousePos);
+            items.getPrimaryItem().tryUse(handler, tileMap, position, mousePos, radius);
         }
         if (keyMap.get(KeyEvent.VK_Q)) {
-            sideItem.tryUse(handler, tileMap, position, new Point((int) position.x, (int) position.y));
+            items.getSideItem().tryUse(handler, tileMap, position, new Point((int)position.x, (int) position.y), radius);
         }
 
     }
@@ -81,8 +70,7 @@ public class LocalPlayer extends Player {
         super.tick(tileMap, keyMap, mousePos, handler);
         if (isDead()) return;
         if (invTicks > 0) invTicks--;
-        activeItem.tick();
-        sideItem.tick();
+        items.tick();
         handleInputs(keyMap, mousePos, tileMap, handler);
         if (velocity.lengthSquared() < MINIMUM_VELOCITY) {
             return;
@@ -128,21 +116,21 @@ public class LocalPlayer extends Player {
         return ((double) hp) / Player.START_HP;
     }
 
-    public double getShootDelayFraction() {
-        return activeItem.getDelayFraction();
-    }
-
     public double getStaminaFraction() {
         return ((double) stamina) / MAX_STAMINA;
     }
 
     public void setTeleporterPlatform(int id, double x, double y) {
-        teleporter.setPlatform(id, x, y);
+        items.getTeleporter().setPlatform(id, x, y);
     }
 
     public void teleport(GameObjectHandler handler, double x, double y) {
         position.set(x, y);
         velocity.set(0, 0);
         handler.createEvent(new PlayerMoved(x, y, Math.PI / 2));
+    }
+
+    public ItemSet getItems() {
+        return items;
     }
 }

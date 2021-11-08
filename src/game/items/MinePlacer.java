@@ -16,7 +16,7 @@ public class MinePlacer extends Item {
     }
 
     @Override
-    protected void use(GameObjectHandler handler, TileMap tileMap, Vector2d source, Point destination) {
+    protected void use(GameObjectHandler handler, TileMap tileMap, Vector2d source, Point destination, int radius) {
         handler.createEvent(new ProjectileCreated(destination.x, destination.y, 0, 0, Projectile.MINE));
     }
 }

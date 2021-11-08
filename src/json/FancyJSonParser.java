@@ -3,6 +3,7 @@ package json;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 
+@SuppressWarnings("ALL")
 public class FancyJSonParser {
 
     private String name;
